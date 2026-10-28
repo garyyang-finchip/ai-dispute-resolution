@@ -1,6 +1,6 @@
 # Pull request: Add ERC: AI Dispute Resolution Framework
 
-*Text for the ethereum/ERCs pull request. Branch `add-erc-ai-dispute`, cut from `ethereum/ERCs` master; files `ERCS/erc-9999.md` and `assets/erc-9999/...` (47 files from `ercs-pr-package/`).*
+*Text for the ethereum/ERCs pull request, opened as [ethereum/ERCs#2123](https://github.com/ethereum/ERCs/pull/2123). Branch `add-erc-ai-dispute`, cut from `ethereum/ERCs` master; files `ERCS/erc-9999.md` and `assets/erc-9999/...` (47 files from `ercs-pr-package/`).*
 
 ---
 
@@ -14,6 +14,6 @@ A dispute is a specific claim about a specific object — that an identified rec
 
 Discussion: https://ethereum-magicians.org/t/draft-erc-ai-dispute-resolution-framework-adrf-admitting-resolving-and-ruling-on-claims-about-bound-objects-within-pre-committed-authority/30121
 
-Reference implementation, schemas, vectors, worked examples and the test suite (64 Foundry tests, including the two complete flows against the vendored ERC-8436 reference registry) are in the assets and in the companion repository: https://github.com/garyyang-finchip/ai-dispute-resolution-framework
+Reference implementation, schemas, vectors, worked examples and the test suite (64 Foundry tests, including the two complete flows against the vendored ERC-8436 reference registry) are in the assets and in the companion repository: https://github.com/garyyang-finchip/ai-dispute-resolution
 
 The placeholder number 9999 will be replaced once a number is assigned.

@@ -1,6 +1,6 @@
 # Draft ERC: AI Dispute Resolution Framework (ADRF) — claims about bound objects, typed resolution, bounded rulings
 
-*Draft of the Ethereum Magicians first post, posted as topic 30121 (https://ethereum-magicians.org/t/draft-erc-ai-dispute-resolution-framework-adrf-admitting-resolving-and-ruling-on-claims-about-bound-objects-within-pre-committed-authority/30121). Add the PR link after filing.*
+*Text of the Ethereum Magicians first post, posted as topic 30121 (https://ethereum-magicians.org/t/draft-erc-ai-dispute-resolution-framework-adrf-admitting-resolving-and-ruling-on-claims-about-bound-objects-within-pre-committed-authority/30121); the pull request is ethereum/ERCs#2123. The test count and the closing line below are the post-filing text (the first version of the post said 58 tests and carried a PR placeholder).*
 
 ---
 
@@ -18,7 +18,7 @@ This is a draft ERC for the step that the standards around AI systems, resources
 
 **Economics declared, not designed.** The kernel fixes what an economic declaration must state (instruments, purposes, flows under every state and result, assumptions, failure handling) and records what executors report; it endorses no loser-pays, bond or reward scheme, and being in the minority of a panel is not a violation.
 
-**What is in the reference repository.** Two registries (the dispute registry split into a thin contract and two externally linked libraries to stay under the code size limit), the ERC-8436 bridge, a formal verifier, an attestor-quorum evidence rule and a service-call escrow that is both obligation source and executor; JSON schemas for the policy, binding, case, finding, ruling and enactment documents; vectors cross-checked between ethers and solc; a 58-test Foundry suite that runs the two complete flows (a double charge verified on chain; a delivery-quality dispute judged by an ERC-8436 roster, including a NoDecision and a finality-by-adoption import) and the exception paths (no authority → Advisory, timeouts adopting an earlier decision, Advisory with no disposal, duplicate enactment refused, exclusivity, clock incompatibility); an evidence script rehearsed end to end on Anvil, to be run on Sepolia against the live ERC-8436 registry.
+**What is in the reference repository.** Two registries (the dispute registry split into a thin contract and two externally linked libraries to stay under the code size limit), the ERC-8436 bridge, two formal verifiers (duplicate settlement, declared version), an attestor-quorum evidence rule and a model-API-service escrow between plain accounts that is both obligation source and executor; JSON schemas for the policy, binding, case, finding, ruling and enactment documents; vectors cross-checked between ethers and solc; a 64-test Foundry suite that runs the two complete flows (a double charge verified on chain; a delivery-quality dispute judged by an ERC-8436 roster, including a NoDecision and a finality-by-adoption import) and the exception paths (no authority → Advisory, timeouts adopting an earlier decision, Advisory with no disposal, duplicate enactment refused, exclusivity, clock incompatibility); an evidence script rehearsed end to end on Anvil, to be run on Sepolia against the live ERC-8436 registry.
 
 **What is deliberately out of the first draft** (reserved, named in the text): panel replacement on review, non-binary outcomes, verifiable selection and independence screening, economic modules, private evidence, cross-chain carriage, mirrors into validation or reputation registries.
 
@@ -29,4 +29,4 @@ Questions I would most value feedback on:
 3. The exclusivity key `(source, obligationRef, proposition)` within one registry — is per-registry exclusivity the right honest scope, or should the text push consumers harder towards one registry per obligation?
 4. The J-profile's one-binary-question rule — whether a typed multi-option profile should be specified now or left reserved.
 
-Repository: `<repo link>` · PR: `<to be added after filing>`
+Repository: https://github.com/garyyang-finchip/ai-dispute-resolution · PR: https://github.com/ethereum/ERCs/pull/2123
