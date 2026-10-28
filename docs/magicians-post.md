@@ -1,6 +1,6 @@
 # Draft ERC: AI Dispute Resolution Framework (ADRF) — claims about bound objects, typed resolution, bounded rulings
 
-*Draft of the Ethereum Magicians first post. Title suggestion: "Draft ERC: AI Dispute Resolution Framework (ADRF) — admitting, resolving and ruling on claims about bound objects within pre-committed authority". Replace the repository link and add the PR link after filing.*
+*Draft of the Ethereum Magicians first post, posted as topic 30121 (https://ethereum-magicians.org/t/draft-erc-ai-dispute-resolution-framework-adrf-admitting-resolving-and-ruling-on-claims-about-bound-objects-within-pre-committed-authority/30121). Add the PR link after filing.*
 
 ---
 
