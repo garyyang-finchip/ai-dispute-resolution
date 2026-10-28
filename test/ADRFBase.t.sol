@@ -10,6 +10,7 @@ import {IADRFPolicyRegistry} from "adrf/interfaces/IADRFPolicyRegistry.sol";
 import {IADRFDisputeRegistry} from "adrf/interfaces/IADRFDisputeRegistry.sol";
 import {ADRFACDFBridge} from "adrf/bridges/ADRFACDFBridge.sol";
 import {DuplicateSettlementVerifier} from "adrf/examples/DuplicateSettlementVerifier.sol";
+import {DeclaredVersionVerifier} from "adrf/examples/DeclaredVersionVerifier.sol";
 import {AttestorQuorumRule} from "adrf/examples/AttestorQuorumRule.sol";
 import {ADRFServiceEscrow} from "adrf/examples/ADRFServiceEscrow.sol";
 import {IACDFRegistry as IACDFRegistryBridge} from "adrf/interfaces/acdf/IACDFRegistry.sol";
@@ -30,6 +31,7 @@ abstract contract ADRFBase is Test {
     ACDFRegistry acdf;
     ADRFACDFBridge bridge;
     DuplicateSettlementVerifier verifier;
+    DeclaredVersionVerifier versionVerifier;
     AttestorQuorumRule rule;
     ADRFServiceEscrow escrow;
 
@@ -47,6 +49,8 @@ abstract contract ADRFBase is Test {
     bytes32 bindingId;
     uint256 callId;
     bytes32 TERMS = keccak256("service terms v1");
+    bytes32 constant V1 = keccak256("model v1");
+    bytes32 constant V2 = keccak256("model v2");
 
     bytes32 constant FAMILY = keccak256("adrf.test.service");
     bytes32 constant CLAUSE_ONE_CHARGE = keccak256("terms: at most one charge per call");
@@ -74,6 +78,7 @@ abstract contract ADRFBase is Test {
         acdf = new ACDFRegistry(acdfPol);
         bridge = new ADRFACDFBridge(reg, IACDFRegistryBridge(address(acdf)));
         verifier = new DuplicateSettlementVerifier();
+        versionVerifier = new DeclaredVersionVerifier();
         rule = new AttestorQuorumRule();
         escrow = new ADRFServiceEscrow(reg);
         REFUND = escrow.EFFECT_REFUND();
@@ -95,10 +100,10 @@ abstract contract ADRFBase is Test {
         vm.prank(client);
         escrow.deposit{value: 4 ether}();
         vm.prank(client);
-        callId = escrow.openCall(provider, 1 ether, TERMS, 30 * DAY);
+        callId = escrow.openCall(provider, 1 ether, TERMS, V2, 30 * DAY);
         vm.warp(START + 1 hours);
         vm.prank(provider);
-        escrow.deliver(callId);
+        escrow.deliver(callId, V2);
         vm.prank(provider);
         escrow.settle(callId);
         vm.warp(START + 2 hours);
@@ -164,9 +169,13 @@ abstract contract ADRFBase is Test {
         s.previous = previous;
         s.updateAuthority = authority;
         s.objectKind = keccak256("service-call");
-        s.methods = new T.MethodBinding[](3);
+        s.methods = new T.MethodBinding[](4);
         s.methods[0] = T.MethodBinding({
             obligationKind: KIND_LIMIT, qType: T.QuestionType.FORMAL, method: address(verifier),
+            params: bytes32(uint256(uint160(address(escrow)))), onUndetermined: T.OnUndetermined.NOT_SUSTAINED
+        });
+        s.methods[3] = T.MethodBinding({
+            obligationKind: KIND_RESULT, qType: T.QuestionType.FORMAL, method: address(versionVerifier),
             params: bytes32(uint256(uint160(address(escrow)))), onUndetermined: T.OnUndetermined.NOT_SUSTAINED
         });
         s.methods[1] = T.MethodBinding({
@@ -225,6 +234,7 @@ abstract contract ADRFBase is Test {
         c.clause = clause;
         c.obligationKind = kind;
         c.respondent = provider;
+        c.actorRef = bytes32(0);
         c.requestedEffects = new bytes32[](1);
         c.requestedEffects[0] = REFUND;
         c.effectOnSustained = REFUND;

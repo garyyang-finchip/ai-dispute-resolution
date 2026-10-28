@@ -1,7 +1,7 @@
 {
   "adrf": "0.1",
   "note": "contentHash = keccak256(UTF-8(JCS(document))). The policy spec hashes the policy document as descriptorHash and the economic declaration as economicDeclaration; the binding hashes its document as termsHash; a case hashes its document as documentHash.",
-  "policyId": "0x54023f33233bb11abac349a2117482508fa4df106f3753f136c26c93e6007574",
+  "policyId": "0x076505a99575bf1006c28609b6391f465246b7ded55d7a0d4eace05767a1b1b4",
   "policySpec": {
     "family": "0x2f76e34803270f23e4aaa6dd4d59a5a5ba7e5002a910da926a851db80cd06d9b",
     "version": 1,
@@ -29,6 +29,13 @@
         "method": "0x0000000000000000000000000000000000000f03",
         "params": "0xc028c48c12d3031fbf5ce8e032eeba532b52b20da95920e4fc89d1942f533baf",
         "onUndetermined": 1
+      },
+      {
+        "obligationKind": 1,
+        "qType": 0,
+        "method": "0x0000000000000000000000000000000000000f04",
+        "params": "0x00000000000000000000000000000000000000000000000000000000000e5c20",
+        "onUndetermined": 0
       }
     ],
     "effects": [
@@ -59,25 +66,25 @@
     "standing": 1,
     "resultProfile": "0x24ef34b623947d63d9d10d9d47a08f597a4ce3affcf8c0bb7f7b83844bf1b0c8",
     "economicDeclaration": "0xe442ca770e7d79425b2e9a728c0a00f2bd9a38ccccdee379c83419035b209f7c",
-    "descriptorHash": "0x3c54dbaa6e5ba999509d2fc00caed7d305c3d7d5bd93096777693d03054ea6be"
+    "descriptorHash": "0x5301b0d8522e9aa388ecaaaecafd8fee3defcdefd80d484d7efe15718480fbb7"
   },
-  "termsHash": "0xf48eb681acc03eb8b82032d43b21ad428d17203b38f3f02cd6fe5bb75f325bab",
+  "termsHash": "0x37eb7dcef451de7e88321dd3169777062d13967a44e0faf429d6475b80e64f5b",
   "files": {
     "policy-service-call.json": {
       "kind": "adrf-policy",
-      "contentHash": "0x3c54dbaa6e5ba999509d2fc00caed7d305c3d7d5bd93096777693d03054ea6be"
+      "contentHash": "0x5301b0d8522e9aa388ecaaaecafd8fee3defcdefd80d484d7efe15718480fbb7"
     },
     "binding-service-escrow.json": {
       "kind": "adrf-binding",
-      "contentHash": "0xf48eb681acc03eb8b82032d43b21ad428d17203b38f3f02cd6fe5bb75f325bab"
+      "contentHash": "0x37eb7dcef451de7e88321dd3169777062d13967a44e0faf429d6475b80e64f5b"
     },
     "case-duplicate-charge.json": {
       "kind": "adrf-case",
-      "contentHash": "0x1c4963e1301262a3566ecefb94b49d9d4ed499606dca658f0401fc6a3677b422"
+      "contentHash": "0x5ba4651aae1e5db74311f82e818ff93db678becfb696a02950a5929a57d59fe5"
     },
     "case-delivery-quality.json": {
       "kind": "adrf-case",
-      "contentHash": "0xebf6cc4aadb595bd7d7e9a856456b77937ef180ae5f2076b47935df1c7e0e67d"
+      "contentHash": "0x5107682b71ff96e56aaf2048d1f544a96951b7b16ce04d8c594597d32bb31ce9"
     },
     "finding-duplicate-charge.json": {
       "kind": "adrf-finding",
@@ -89,11 +96,27 @@
     },
     "ruling-duplicate-charge.json": {
       "kind": "adrf-ruling",
-      "contentHash": "0x5081236e051e0657127bae317031838db6ea5d3e05a7b54c001a6a5db1621f9a"
+      "contentHash": "0xf44db3ea3fb6ff3c3d7ac6ed96ed3dbe84db56981d06c63d0f93e82b78694da1"
     },
     "ruling-delivery-quality.json": {
       "kind": "adrf-ruling",
-      "contentHash": "0x12fd49adadab98e054c2f04c72eac6b1962c39929f92366ce9c3fc81ddae5e68"
+      "contentHash": "0x72f53bc562e638448a9ec671646b556e0681b49c6d83e3ab88bfe25267a180d1"
+    },
+    "case-version-commitment.json": {
+      "kind": "adrf-case",
+      "contentHash": "0xb5b92b936ee4047a4056390667ab19da11adfc06033d99d9fd365679c21ee4e5"
+    },
+    "finding-version-declared.json": {
+      "kind": "adrf-finding",
+      "contentHash": "0xd70def1e059c576bb6c007eb9e9d457c3281dc6a0309db555d2b8aaf37d0d50f"
+    },
+    "finding-version-actual.json": {
+      "kind": "adrf-finding",
+      "contentHash": "0xd55a1b226aa3dd99dc40e462a144ce868400bec954feb5dc6d53b512c93741db"
+    },
+    "ruling-version-commitment.json": {
+      "kind": "adrf-ruling",
+      "contentHash": "0x6f339571b97963a1ce800e1ccb388612457f2e56f4add3330822dab8277cd690"
     },
     "enactment-refund.json": {
       "kind": "adrf-enactment",
@@ -101,7 +124,8 @@
     }
   },
   "caseDocumentHashes": {
-    "case-duplicate-charge.json": "0x1c4963e1301262a3566ecefb94b49d9d4ed499606dca658f0401fc6a3677b422",
-    "case-delivery-quality.json": "0xebf6cc4aadb595bd7d7e9a856456b77937ef180ae5f2076b47935df1c7e0e67d"
+    "case-duplicate-charge.json": "0x5ba4651aae1e5db74311f82e818ff93db678becfb696a02950a5929a57d59fe5",
+    "case-delivery-quality.json": "0x5107682b71ff96e56aaf2048d1f544a96951b7b16ce04d8c594597d32bb31ce9",
+    "case-version-commitment.json": "0xb5b92b936ee4047a4056390667ab19da11adfc06033d99d9fd365679c21ee4e5"
   }
 }

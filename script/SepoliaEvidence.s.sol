@@ -7,6 +7,7 @@ import {ADRFPolicyRegistry} from "adrf/ADRFPolicyRegistry.sol";
 import {ADRFDisputeRegistry} from "adrf/ADRFDisputeRegistry.sol";
 import {ADRFACDFBridge} from "adrf/bridges/ADRFACDFBridge.sol";
 import {DuplicateSettlementVerifier} from "adrf/examples/DuplicateSettlementVerifier.sol";
+import {DeclaredVersionVerifier} from "adrf/examples/DeclaredVersionVerifier.sol";
 import {AttestorQuorumRule} from "adrf/examples/AttestorQuorumRule.sol";
 import {ADRFServiceEscrow} from "adrf/examples/ADRFServiceEscrow.sol";
 import {IACDFRegistry} from "adrf/interfaces/acdf/IACDFRegistry.sol";
@@ -27,7 +28,7 @@ import {ACDFRegistry as LocalACDFRegistry} from "acdf/ACDFRegistry.sol";
 ///   ... then the other phases, warping Anvil's clock (evm_increaseTime) between them.
 contract SepoliaEvidence is Script {
     struct State {
-        address policies; address registry; address verifier; address rule; address bridge; address escrow;
+        address policies; address registry; address verifier; address versionVerifier; address rule; address bridge; address escrow;
         address acdfRegistry; address acdfPolicies; bytes32 acdfPolicyId; bytes32 panelId; bytes32 policyId; bytes32 bindingId;
         uint256 callFormal; bytes32 caseFormal; uint256 callJudged; bytes32 caseJudged; bytes32 issueJudged;
     }
@@ -62,6 +63,7 @@ contract SepoliaEvidence is Script {
         s.policies = vm.parseJsonAddress(j, ".policies");
         s.registry = vm.parseJsonAddress(j, ".registry");
         s.verifier = vm.parseJsonAddress(j, ".verifier");
+        s.versionVerifier = vm.parseJsonAddress(j, ".versionVerifier");
         s.rule = vm.parseJsonAddress(j, ".rule");
         s.bridge = vm.parseJsonAddress(j, ".bridge");
         s.escrow = vm.parseJsonAddress(j, ".escrow");
@@ -83,6 +85,7 @@ contract SepoliaEvidence is Script {
         vm.serializeAddress(o, "policies", s.policies);
         vm.serializeAddress(o, "registry", s.registry);
         vm.serializeAddress(o, "verifier", s.verifier);
+        vm.serializeAddress(o, "versionVerifier", s.versionVerifier);
         vm.serializeAddress(o, "rule", s.rule);
         vm.serializeAddress(o, "bridge", s.bridge);
         vm.serializeAddress(o, "escrow", s.escrow);
@@ -114,6 +117,7 @@ contract SepoliaEvidence is Script {
         ADRFPolicyRegistry pol = new ADRFPolicyRegistry();
         ADRFDisputeRegistry reg = new ADRFDisputeRegistry(pol);
         DuplicateSettlementVerifier verifier = new DuplicateSettlementVerifier();
+        DeclaredVersionVerifier versionVerifier = new DeclaredVersionVerifier();
         AttestorQuorumRule rule = new AttestorQuorumRule();
 
         // ERC-8436: the live registry (ACDF_REGISTRY) or a local deployment of the vendored reference on Anvil
@@ -163,8 +167,9 @@ contract SepoliaEvidence is Script {
         p.version = 1;
         p.updateAuthority = deployer;
         p.objectKind = keccak256("service-call");
-        p.methods = new T.MethodBinding[](3);
+        p.methods = new T.MethodBinding[](4);
         p.methods[0] = T.MethodBinding(escrow.KIND_LIMIT(), T.QuestionType.FORMAL, address(verifier), bytes32(uint256(uint160(address(escrow)))), T.OnUndetermined.NOT_SUSTAINED);
+        p.methods[3] = T.MethodBinding(escrow.KIND_RESULT(), T.QuestionType.FORMAL, address(versionVerifier), bytes32(uint256(uint160(address(escrow)))), T.OnUndetermined.NOT_SUSTAINED);
         p.methods[1] = T.MethodBinding(escrow.KIND_RESULT(), T.QuestionType.JUDGED, address(bridge), s.acdfPolicyId, T.OnUndetermined.NO_DECISION);
         p.methods[2] = T.MethodBinding(0, T.QuestionType.EVIDENCED, address(rule), s.panelId, T.OnUndetermined.NO_DECISION);
         p.effects = new T.Effect[](2);
@@ -203,7 +208,7 @@ contract SepoliaEvidence is Script {
         for (uint256 i = 0; i < 3; i++) payable(jurors[i]).transfer(0.002 ether);
         vm.stopBroadcast();
 
-        s.policies = address(pol); s.registry = address(reg); s.verifier = address(verifier); s.rule = address(rule);
+        s.policies = address(pol); s.registry = address(reg); s.verifier = address(verifier); s.versionVerifier = address(versionVerifier); s.rule = address(rule);
         s.bridge = address(bridge); s.escrow = address(escrow); s.acdfRegistry = address(acdf); s.acdfPolicies = address(acdfPol);
         save(s);
         console2.log("deployed; registry", address(reg));
@@ -229,11 +234,11 @@ contract SepoliaEvidence is Script {
 
         vm.startBroadcast(clientPk);
         escrow.deposit{value: 0.004 ether}();
-        uint256 callId = escrow.openCall(provider, 0.001 ether, keccak256("service terms v1"), 4 hours);
+        uint256 callId = escrow.openCall(provider, 0.001 ether, keccak256("service terms v1"), keccak256("model v2"), 4 hours);
         vm.stopBroadcast();
 
         vm.startBroadcast(providerPk);
-        escrow.deliver(callId);
+        escrow.deliver(callId, keccak256("model v2"));
         escrow.settle(callId);
         escrow.settle(callId); // the double charge
         vm.stopBroadcast();
@@ -281,10 +286,10 @@ contract SepoliaEvidence is Script {
 
         vm.startBroadcast(clientPk);
         escrow.deposit{value: 0.002 ether}();
-        uint256 callId = escrow.openCall(provider, 0.001 ether, keccak256("service terms v1"), 4 hours);
+        uint256 callId = escrow.openCall(provider, 0.001 ether, keccak256("service terms v1"), keccak256("model v2"), 4 hours);
         vm.stopBroadcast();
         vm.startBroadcast(providerPk);
-        escrow.deliver(callId);
+        escrow.deliver(callId, keccak256("model v2"));
         escrow.settle(callId);
         vm.stopBroadcast();
 

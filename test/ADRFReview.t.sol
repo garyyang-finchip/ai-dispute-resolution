@@ -134,10 +134,10 @@ contract ADRFReviewTest is ADRFBase {
         ADRFServiceEscrow e2 = new ADRFServiceEscrow(reg);
         bytes32 b2 = e2.bindTo(bindingInput(pid, T.AcceptanceMode.PRE_COMMIT));
         vm.prank(client);
-        uint256 c2 = e2.openCall(provider, 1 ether, TERMS, 30 * DAY);
+        uint256 c2 = e2.openCall(provider, 1 ether, TERMS, V2, 30 * DAY);
         vm.warp(block.timestamp + 1);
         vm.prank(provider);
-        e2.deliver(c2);
+        e2.deliver(c2, V2);
         T.ClaimInput memory claim = performanceClaim();
         claim.object = e2.objectOf(c2);
         vm.prank(client);

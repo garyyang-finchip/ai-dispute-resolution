@@ -17,6 +17,10 @@ fs.mkdirSync(EX, { recursive: true });
 
 const CHAIN = 11155111;
 const verifier = '0x0000000000000000000000000000000000000f01';
+const versionVerifier = '0x0000000000000000000000000000000000000f04';
+const SERVICE_ENDPOINT = L.id('https://api.example-model-provider.test/v2/complete');
+const V1 = L.id('model v1');
+const V2 = L.id('model v2');
 const bridge = '0x0000000000000000000000000000000000000f02';
 const rule = '0x0000000000000000000000000000000000000f03';
 const escrow = '0x00000000000000000000000000000000000e5c20';
@@ -44,6 +48,7 @@ const spec = {
     { obligationKind: 3, qType: 0, method: verifier, params: '0x' + escrow.slice(2).padStart(64, '0'), onUndetermined: 0 },
     { obligationKind: 1, qType: 2, method: bridge, params: ACDF_POLICY, onUndetermined: 1 },
     { obligationKind: 0, qType: 1, method: rule, params: PANEL, onUndetermined: 1 },
+    { obligationKind: 1, qType: 0, method: versionVerifier, params: '0x' + escrow.slice(2).padStart(64, '0'), onUndetermined: 0 },
   ],
   effects: [{ id: EFFECT_REFUND, category: 0 }, { id: EFFECT_FEE_SPLIT, category: 1 }],
   track: {
@@ -82,8 +87,9 @@ spec.economicDeclaration = C.canonicalHash(economicDeclaration);
 
 const policyDoc = {
   kind: 'adrf-policy', adrf: '0.1',
-  name: 'service-call disputes v1',
-  description: 'Disputes about service calls of a service escrow: payment (limit) obligations decided by a settlement verifier, result obligations decided by an ERC-8436 roster, external facts decided by an attestor panel.',
+  name: 'model API service disputes v1',
+  description: 'Disputes about calls of a model API service held in a service escrow between plain accounts: payment (limit) obligations decided by a settlement verifier, the declared-versus-committed version decided by a version verifier, result obligations decided by an ERC-8436 roster, external facts (such as the version actually used) decided by an attestor panel.',
+  objectCategory: 'ai-system-or-service',
   family: 'adrf.vectors.service', version: 1, previous: ZERO32, updateAuthority: authority,
   objectKind: 'service-call',
   obligationKinds: [
@@ -96,6 +102,10 @@ const policyDoc = {
     { obligationKind: 3, qType: 'FORMAL', method: verifier, params: spec.methods[0].params, paramsMeaning: 'the settlement ledger (the escrow)', onUndetermined: 'NOT_SUSTAINED', supports: ['computed'], trustAssumptions: ['the ledger records every settlement'], onFailure: 'UNDETERMINED for a proposition the verifier was not built to decide' },
     { obligationKind: 1, qType: 'JUDGED', method: bridge, params: ACDF_POLICY, paramsMeaning: 'the ERC-8436 policy of the 2-of-3 roster', onUndetermined: 'NO_DECISION', supports: ['judged'], trustAssumptions: ['the roster is independent of the parties as declared in the judgment section'], onFailure: 'UNDETERMINED when the issue ends in NoDecision; TIMEOUT when nobody imports in time' },
     { obligationKind: 0, qType: 'EVIDENCED', method: rule, params: PANEL, paramsMeaning: 'the attestor panel (2 of 3)', onUndetermined: 'NO_DECISION', supports: ['signed', 'evidenced'], trustAssumptions: ['the panel attests honestly what it observed'], onFailure: 'UNDETERMINED below quorum' },
+    { obligationKind: 1, qType: 'FORMAL', method: versionVerifier, params: spec.methods[3].params, paramsMeaning: 'the service whose committed and declared versions are compared', onUndetermined: 'NOT_SUSTAINED', supports: ['computed'], trustAssumptions: ['the escrow records the committed and the declared version'], onFailure: 'UNDETERMINED before delivery or for a proposition the verifier was not built to decide' },
+  ],
+  evaluationConfigs: [
+    { appliesTo: 'statistical-quality obligations (kind 4)', unit: 'the batch named by the terms', sampleSelection: 'the sample fixed in the terms before the batch ran', versionScope: 'the committed version only', metric: 'the metric named in the terms', threshold: 'the threshold named in the terms', uncertainty: 'reported with the finding; a result inside the stated confidence band is UNDETERMINED' },
   ],
   effects: [
     { id: EFFECT_REFUND, label: 'refund', category: 'SUBSTANTIVE', description: 'one charge of the call (payment claims) or the call amount (delivery claims) moves from the provider balance to the client balance' },
@@ -110,6 +120,8 @@ const policyDoc = {
   burden: [
     { claimKind: 'payment (limit)', whoProves: 'the claimant, by running the verifier over the pinned call', threshold: 'the verifier returns TRUE', onShortfall: 'NOT_SUSTAINED' },
     { claimKind: 'delivery (result)', whoProves: 'the roster forms a judgment', threshold: '2 of 3', onShortfall: 'NO_DECISION' },
+    { claimKind: 'declared version (result, formal)', whoProves: 'the claimant, by running the version verifier', threshold: 'declared differs from committed', onShortfall: 'NOT_SUSTAINED' },
+    { claimKind: 'version actually used (result, evidenced)', whoProves: 'the attestor panel on the material provided', threshold: '2 of 3', onShortfall: 'NO_DECISION' },
   ],
   economicDeclaration,
   judgment: { acdfRegistry: acdf, acdfPolicyId: ACDF_POLICY, independence: 'no roster member is the client, the provider or an operator of either', selection: 'fixed roster declared in the ERC-8436 policy', appealStanding: 'ANYONE (ERC-8436 policy); third parties may appeal at the source' },
@@ -134,6 +146,7 @@ const bindingDoc = {
   downgradeOnClock: false,
   validUntil: 0,
   fundAuthorizations: [{ instrument: 'escrow balances', limit: 'the amount of the call', executor: escrow }],
+  identitiesNote: 'the client and the provider are plain accounts; no agent identity, task token or swarm is required to open, deliver, charge or dispute a call',
   clockRules: {
     clock: 'mode=timestamp (the registry clock)',
     triggerEvents: [
@@ -148,7 +161,7 @@ const TERMS_HASH = C.canonicalHash(bindingDoc);
 
 // -------------------------------------------------------------------------------------- cases
 const callId = 17;
-const object = { chainId: CHAIN, target: escrow, id: callId, versionHash: L.keccak256(L.coder.encode(['uint256', 'bytes32'], [callId, TERMS])) };
+const object = { chainId: CHAIN, target: escrow, id: callId, versionHash: L.keccak256(L.coder.encode(['uint256', 'bytes32', 'bytes32'], [callId, TERMS, V2])) };
 const PROP_DUP = L.id('claim: the call was charged twice');
 const SQ_DUP = L.keccak256(L.coder.encode(['bytes32', 'address', 'uint256'], [L.id('adrf:prop/duplicate-settlement/v1'), escrow, callId]));
 const dupCase = {
@@ -157,9 +170,16 @@ const dupCase = {
   event: { eventRef: EVENT_SETTLEMENT, description: 'the second settlement of call 17', eventAt: 1770007200 },
   claim: { statement: 'Call 17 was charged twice.', proposition: PROP_DUP, decisive: 0, supportsWhen: 'TRUE' },
   rules: { normRef: TERMS, normDescription: 'service terms v1', clause: L.id('terms: at most one charge per call'), clauseText: 'at most one charge per call', obligationKind: { code: 3, label: 'limit' }, policyId: POLICY_ID },
-  subjects: { claimant: client, respondent: provider, roles: [{ account: client, role: 'client' }, { account: provider, role: 'provider' }, { account: escrow, role: 'obligation source and executor' }] },
+  aiRelation: 'a billed inference request of a model API service',
+  subjects: {
+    claimant: client, respondent: provider,
+    actor: { ref: SERVICE_ENDPOINT, kind: 'service', description: 'the model API endpoint that charged the call' },
+    roles: [{ account: client, role: 'client (an enterprise account)' }, { account: provider, role: 'provider (obligor of the service terms)' }, { account: escrow, role: 'obligation source and executor' }],
+  },
   authorization: { effectClass: 'Binding', acceptanceMode: 'PRE_COMMIT', acceptedBy: 'the escrow, for all its calls, at binding time' },
   evidence: { scope: 'the settlement records of call 17 in the escrow', provision: 'on chain; nothing to provide', access: 'public state', verifiers: 'anyone, through the bound verifier', retention: 'permanent' },
+  context: { committed: ['one charge per call (terms v1)'], declared: ['two settlements recorded by the escrow'], toEstablish: [], unverifiedPremises: ['the escrow records every settlement of call 17'] },
+  participants: { judgment: [{ role: 'verifier', basis: 'bound by the policy for (limit, FORMAL)', account: verifier }], executors: [{ account: escrow, authority: 'holds the balances it moves' }] },
   effects: { requested: [EFFECT_REFUND], onSustained: EFFECT_REFUND, onNotSustained: null, fallbackRef: STATUS_QUO, atMost: 'one charge of call 17, from the provider balance to the client balance' },
   subQuestions: [{ index: 0, proposition: SQ_DUP, statement: 'The settlement count of call 17 in the escrow exceeds one.', qType: 'FORMAL', obligationKind: 3, inputs: 'abi.encode(uint256(17))', inputsHash: L.keccak256(L.coder.encode(['uint256'], [callId])), dependsOn: [] }],
 };
@@ -173,16 +193,51 @@ const qualityCase = {
   event: { eventRef: EVENT_DELIVERY, description: 'the delivery of call 17', eventAt: 1770003600 },
   claim: { statement: 'The delivery of call 17 does not conform to the acceptance criteria of the terms.', proposition: PROP_QUALITY, decisive: 0, supportsWhen: 'FALSE' },
   rules: { normRef: TERMS, normDescription: 'service terms v1', clause: L.id('terms: the deliverable conforms to the acceptance criteria'), clauseText: 'the deliverable conforms to the acceptance criteria', obligationKind: { code: 1, label: 'result' }, policyId: POLICY_ID },
-  subjects: { claimant: client, respondent: provider, roles: [{ account: client, role: 'client' }, { account: provider, role: 'provider' }] },
+  aiRelation: 'the output delivered for an inference request of a model API service',
+  subjects: {
+    claimant: client, respondent: provider,
+    actor: { ref: SERVICE_ENDPOINT, kind: 'service', description: 'the model API endpoint that produced the deliverable' },
+    roles: [{ account: client, role: 'client' }, { account: provider, role: 'provider (obligor)' }],
+  },
   authorization: { effectClass: 'Binding', acceptanceMode: 'PRE_COMMIT', acceptedBy: 'the escrow, for all its calls, at binding time' },
   evidence: { scope: 'the deliverable and the acceptance criteria', provision: 'both parties provide material to the roster within the evidence window', access: 'content-addressed URIs', verifiers: 'the ERC-8436 roster', retention: 'until the hard deadline' },
+  context: { committed: ['the deliverable conforms to the acceptance criteria of terms v1', 'model v2'], declared: ['model v2 (provider declaration at delivery)'], toEstablish: ['conformity of the deliverable (judged)'], unverifiedPremises: ['the roster saw the deliverable and the criteria'] },
+  participants: { judgment: [{ role: 'ERC-8436 roster (2 of 3)', basis: 'the ERC-8436 policy named by the method binding' }], executors: [{ account: escrow, authority: 'holds the balances it moves' }] },
   effects: { requested: [EFFECT_REFUND], onSustained: EFFECT_REFUND, onNotSustained: null, fallbackRef: STATUS_QUO, atMost: 'the amount of call 17' },
   subQuestions: [{ index: 0, proposition: SQ_CONFORMS, statement: 'The deliverable conforms to the acceptance criteria.', qType: 'JUDGED', obligationKind: 1, dependsOn: [] }],
 };
 qualityCase.evidence.scopeHash = C.canonicalHash({ scope: qualityCase.evidence.scope });
 
+const PROP_VERSION_CLAIM = L.id('claim: the service did not run the committed model version');
+const SQ_DECLARED = L.keccak256(L.coder.encode(['bytes32', 'address', 'uint256'], [L.id('adrf:prop/declared-version-differs/v1'), escrow, callId]));
+const SQ_ACTUAL = L.id('the version actually used for the call matches the committed version');
+const versionCase = {
+  kind: 'adrf-case', adrf: '0.1',
+  object: { ref: object, description: 'service call 17 of the escrow, terms v1, committed model v2' },
+  event: { eventRef: EVENT_DELIVERY, description: 'the delivery of call 17', eventAt: 1770003600 },
+  claim: { statement: 'The service did not run the committed model version (v2) for call 17.', proposition: PROP_VERSION_CLAIM, decisive: 1, supportsWhen: 'FALSE' },
+  rules: { normRef: TERMS, normDescription: 'service terms v1', clause: L.id('terms: the service runs the committed model version'), clauseText: 'the service runs the committed model version', obligationKind: { code: 1, label: 'result' }, policyId: POLICY_ID },
+  aiRelation: 'which model version served an inference request of a model API service',
+  subjects: {
+    claimant: client, respondent: provider,
+    actor: { ref: SERVICE_ENDPOINT, kind: 'service', description: 'the model API endpoint that served the call' },
+    roles: [{ account: client, role: 'client' }, { account: provider, role: 'provider (obligor of the version commitment)' }],
+  },
+  authorization: { effectClass: 'Binding', acceptanceMode: 'PRE_COMMIT', acceptedBy: 'the escrow, for all its calls, at binding time' },
+  evidence: { scope: 'the service logs and the audit material of call 17', provision: 'the provider makes the service log available to the panel; the client provides the response material', access: 'restricted access for the panel; redacted copies for the parties', verifiers: 'the attestor panel', retention: 'until the hard deadline' },
+  context: { committed: ['model v2 (terms v1)'], declared: ['model v2 (provider declaration at delivery)'], toEstablish: ['the version actually used for call 17'], unverifiedPremises: ['the service log provided is the log of call 17'] },
+  participants: { judgment: [{ role: 'version verifier', basis: 'bound by the policy for (result, FORMAL)', account: versionVerifier }, { role: 'attestor panel (2 of 3)', basis: 'bound by the policy for (any, EVIDENCED)' }], executors: [{ account: escrow, authority: 'holds the balances it moves' }] },
+  effects: { requested: [EFFECT_REFUND], onSustained: EFFECT_REFUND, onNotSustained: null, fallbackRef: STATUS_QUO, atMost: 'the amount of call 17' },
+  subQuestions: [
+    { index: 0, proposition: SQ_DECLARED, statement: 'The version the provider declared at delivery differs from the committed version.', qType: 'FORMAL', obligationKind: 1, inputs: 'abi.encode(uint256(17))', inputsHash: L.keccak256(L.coder.encode(['uint256'], [callId])), dependsOn: [] },
+    { index: 1, proposition: SQ_ACTUAL, statement: 'The version actually used for call 17 matches the committed version.', qType: 'EVIDENCED', obligationKind: 1, dependsOn: [] },
+  ],
+};
+versionCase.evidence.scopeHash = C.canonicalHash({ scope: versionCase.evidence.scope });
+
 const CASE_DUP = L.registryId(CHAIN, registry, 2);
 const CASE_QUALITY = L.registryId(CHAIN, registry, 3);
+const CASE_VERSION = L.registryId(CHAIN, registry, 4);
 const ISSUE = L.registryId(CHAIN, acdf, 1);
 
 // --------------------------------------------------------------------------------- findings
@@ -205,6 +260,23 @@ const findingQuality = {
   at: 1770100000,
 };
 
+const findingVersionDeclared = {
+  kind: 'adrf-finding', adrf: '0.1', caseId: CASE_VERSION, subQuestion: 0, round: 1,
+  proposition: SQ_DECLARED, statement: versionCase.subQuestions[0].statement, value: 'FALSE',
+  method: { address: versionVerifier, qType: 'FORMAL', version: 'DeclaredVersionVerifier v0.2', params: spec.methods[3].params },
+  inputs: { description: 'abi.encode(uint256(17))', inputsHash: versionCase.subQuestions[0].inputsHash, resultHash: L.keccak256(L.coder.encode(['address', 'uint256', 'bytes32', 'bytes32'], [escrow, callId, V2, V2])) },
+  dependsOn: [], externalPremises: ['the escrow records the committed and the declared version'],
+  acceptedBy: versionVerifier, supportKinds: ['computed'], reason: 'NONE', at: 1770011000,
+};
+const findingVersionActual = {
+  kind: 'adrf-finding', adrf: '0.1', caseId: CASE_VERSION, subQuestion: 1, round: 1,
+  proposition: SQ_ACTUAL, statement: versionCase.subQuestions[1].statement, value: 'FALSE',
+  method: { address: rule, qType: 'EVIDENCED', version: 'AttestorQuorumRule v0.1', params: PANEL },
+  inputs: { description: 'the service log and the response material of call 17, as provided under the evidence rule', resultHash: L.id('keccak256(panelId, caseId, subQuestion, yes = 0, no = 2)') },
+  dependsOn: [], externalPremises: ['the service log provided is the log of call 17', 'the panel attests honestly what it observed'],
+  acceptedBy: rule, supportKinds: ['signed', 'evidenced'], reason: 'NONE', at: 1770090000,
+};
+
 // ---------------------------------------------------------------------------------- rulings
 const rulingDup = {
   kind: 'adrf-ruling', adrf: '0.1', registry, chainId: CHAIN, caseId: CASE_DUP,
@@ -222,6 +294,15 @@ const rulingQuality = {
   policyId: POLICY_ID, bindingId: L.registryId(CHAIN, registry, 1), source: escrow, proposition: PROP_QUALITY,
   judgment: findingQuality.source,
   basis: 'Sub-question 0 (judged, ERC-8436 issue of the 2-of-3 roster, round 1 of 1, not adopted from an earlier round): the proposition "the deliverable conforms" was blocked under the rule. A blocked proposition is FALSE for the sub-question; the claim named FALSE as its supporting value.',
+};
+
+const rulingVersion = {
+  kind: 'adrf-ruling', adrf: '0.1', registry, chainId: CHAIN, caseId: CASE_VERSION,
+  state: 'Final', result: 'Sustained', effectClass: 'Binding', reason: 'NONE', closure: 'REVIEW_LAPSED',
+  decidedAt: 1770090000, finalAt: 1770262800, roundCount: 1, sourceRound: 1, adoptedFromEarlierRound: false, bySilence: false,
+  supportKinds: ['signed', 'evidenced'], allowedEffect: EFFECT_REFUND, fallbackRef: null,
+  policyId: POLICY_ID, bindingId: L.registryId(CHAIN, registry, 1), source: escrow, proposition: PROP_VERSION_CLAIM,
+  basis: 'Sub-question 1 (evidenced, attestor panel 2 of 3, on the service log and response material of call 17): the version actually used did not match the committed one; the claim named FALSE as its supporting value. Sub-question 0 (computed): the declaration matched the commitment, which decides nothing about the version used. The ruling covers call 17 and the version obligation of its terms, nothing else about the provider or the model.',
 };
 
 // -------------------------------------------------------------------------------- enactment
@@ -244,6 +325,10 @@ const files = {
   'finding-delivery-quality.json': findingQuality,
   'ruling-duplicate-charge.json': rulingDup,
   'ruling-delivery-quality.json': rulingQuality,
+  'case-version-commitment.json': versionCase,
+  'finding-version-declared.json': findingVersionDeclared,
+  'finding-version-actual.json': findingVersionActual,
+  'ruling-version-commitment.json': rulingVersion,
   'enactment-refund.json': enactment,
 };
 const manifest = { adrf: '0.1', note: 'contentHash = keccak256(UTF-8(JCS(document))). The policy spec hashes the policy document as descriptorHash and the economic declaration as economicDeclaration; the binding hashes its document as termsHash; a case hashes its document as documentHash.', policyId: POLICY_ID, policySpec: spec, termsHash: TERMS_HASH, files: {} };
@@ -252,6 +337,6 @@ for (const [name, doc] of Object.entries(files)) {
   manifest.files[name] = { kind: doc.kind, contentHash: C.canonicalHash(doc) };
   console.log(`wrote examples/${name}`);
 }
-manifest.caseDocumentHashes = { 'case-duplicate-charge.json': manifest.files['case-duplicate-charge.json'].contentHash, 'case-delivery-quality.json': manifest.files['case-delivery-quality.json'].contentHash };
+manifest.caseDocumentHashes = { 'case-duplicate-charge.json': manifest.files['case-duplicate-charge.json'].contentHash, 'case-delivery-quality.json': manifest.files['case-delivery-quality.json'].contentHash, 'case-version-commitment.json': manifest.files['case-version-commitment.json'].contentHash };
 fs.writeFileSync(path.join(EX, 'manifest.json'), JSON.stringify(manifest, (k, v) => (typeof v === 'bigint' ? v.toString() : v), 2) + '\n');
 console.log('wrote examples/manifest.json');

@@ -17,13 +17,14 @@ contract ADRFOptimisticAndPolicyTest is ADRFBase {
         super.setUp();
         e2 = new ADRFServiceEscrow(reg);
         T.PolicySpec memory s = servicePolicy(keccak256("adrf.test.optimistic"), 1, bytes32(0), true);
-        s.methods[0].params = bytes32(uint256(uint160(address(e2)))); // the verifier is bound to this escrow's ledger
+        s.methods[0].params = bytes32(uint256(uint160(address(e2)))); // the verifiers are bound to this escrow
+        s.methods[3].params = bytes32(uint256(uint160(address(e2))));
         optPolicy = pol.registerPolicy(s);
         b2 = e2.bindTo(bindingInput(optPolicy, T.AcceptanceMode.PRE_COMMIT));
         vm.prank(client);
         e2.deposit{value: 2 ether}();
         vm.prank(client);
-        c2 = e2.openCall(provider, 1 ether, TERMS, 30 * DAY);
+        c2 = e2.openCall(provider, 1 ether, TERMS, V2, 30 * DAY);
         vm.warp(block.timestamp + 1);
         vm.prank(provider);
         e2.settle(c2);
@@ -235,12 +236,15 @@ contract ADRFOptimisticAndPolicyTest is ADRFBase {
         assertEq(m.method, address(rule));
         (found, ) = pol.findMethod(policyId, KIND_LIMIT, T.QuestionType.JUDGED);
         assertFalse(found);
+        (found, m) = pol.findMethod(policyId, KIND_RESULT, T.QuestionType.FORMAL);
+        assertTrue(found);
+        assertEq(m.method, address(versionVerifier));
         (bool declared, T.EffectCategory cat) = pol.effectCategory(policyId, EFFECT_FEE_SPLIT);
         assertTrue(declared);
         assertEq(uint8(cat), uint8(T.EffectCategory.PROCEDURAL_ECONOMIC));
         (declared, ) = pol.effectCategory(policyId, keccak256("none"));
         assertFalse(declared);
-        assertEq(pol.methodCount(policyId), 3);
+        assertEq(pol.methodCount(policyId), 4);
         assertEq(pol.effectCount(policyId), 2);
         T.Track memory t = pol.trackOf(policyId);
         assertEq(t.maxTotalDuration, 12 * DAY);

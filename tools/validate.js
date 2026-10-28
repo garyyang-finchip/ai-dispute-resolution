@@ -58,7 +58,7 @@ if (L.policyId(manifest.policySpec) !== manifest.policyId) { failures++; console
 const bindingDoc = JSON.parse(fs.readFileSync(path.join(EX, 'binding-service-escrow.json'), 'utf8'));
 if (C.canonicalHash(bindingDoc) !== manifest.termsHash) { failures++; console.log('FAIL termsHash'); }
 if (bindingDoc.policyId !== manifest.policyId) { failures++; console.log('FAIL binding policyId'); }
-for (const f of ['case-duplicate-charge.json', 'case-delivery-quality.json']) {
+for (const f of ['case-duplicate-charge.json', 'case-delivery-quality.json', 'case-version-commitment.json']) {
   const doc = JSON.parse(fs.readFileSync(path.join(EX, f), 'utf8'));
   if (doc.rules.policyId !== manifest.policyId) { failures++; console.log(`FAIL ${f} policyId`); }
   if (manifest.caseDocumentHashes[f] !== C.canonicalHash(doc)) { failures++; console.log(`FAIL ${f} documentHash`); }

@@ -126,7 +126,7 @@ contract ADRFFormalFlowTest is ADRFBase {
     function test_formal_notSustainedWhenVerifierSaysFalse() public {
         // a call charged once: the verifier answers FALSE, the claim is not sustained, no effect is allowed
         vm.prank(client);
-        uint256 c2 = escrow.openCall(provider, 1 ether, TERMS, 30 * DAY);
+        uint256 c2 = escrow.openCall(provider, 1 ether, TERMS, V2, 30 * DAY);
         vm.warp(block.timestamp + 1);
         vm.prank(provider);
         escrow.settle(c2);
