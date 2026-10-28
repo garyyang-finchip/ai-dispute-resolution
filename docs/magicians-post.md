@@ -1,0 +1,30 @@
+# Draft ERC: AI Dispute Resolution Framework (ADRF) — claims about bound objects, typed resolution, bounded rulings
+
+*Draft of the Ethereum Magicians first post. Title suggestion: "Draft ERC: AI Dispute Resolution Framework (ADRF) — admitting, resolving and ruling on claims about bound objects within pre-committed authority". Replace the repository link and add the PR link after filing.*
+
+---
+
+This is a draft ERC for the step that the agent-economy standards have been leaving to "the parties' contract": what happens when someone objects to a record.
+
+**The claim is the object.** A dispute is a specific claim about a specific object: an identified record, delivery, settlement, declaration or action does or does not conform to an obligation that was declared before the event. Admission is an algorithmic check of five criteria against what the bound business contract attests — identifiable object and event, accountable respondent, norm declared before the event, a bound method for every sub-question, open window — plus standing, authorized effects, a clock check (the business window must hold the whole procedure plus an enactment margin) and exclusivity (one active binding case per source, obligation and proposition). "Agent A is unreliable" cannot be filed; "delivery S of task T does not meet the criteria pinned at tender time" can.
+
+**Four objects, two registries, no funds.** A *Dispute Policy* (content-addressed, versioned through families) binds each (obligation kind, question type) pair to a method contract and declares the effect vocabulary and the procedure track. A *Dispute Binding* is the obligation source's own statement of which policy it accepts for its objects, which effects a ruling may authorize (only what it can enact), who may enact and who else has standing — the only source of a ruling's authority. A *Case* holds the eight elements a dispute must state, a dependency table of typed sub-questions, the findings with their support kinds, the round decisions and four dimensions read separately (procedure state, substantive result, reason, enactment status per effect). A *Ruling* is `Sustained`, `NotSustained` or `NoDecision`, with provenance, the one substantive effect it authorizes or the pre-committed disposition it points to, and how the procedure closed. The registries never move funds or execute; executors named by the binding read, check their own authority, enact and report.
+
+**Three question types, three method interfaces.** `FORMAL` questions go to a deterministic verifier over inputs pinned at filing (support kind `computed`). `EVIDENCED` questions go to an evidence rule (support as the rule declares). `JUDGED` questions go to a judgment method; the reference profile files one binary question per sub-question as a `CONSUMER_FILED` issue with an [ERC-8436](https://eips.ethereum.org/ERCS/erc-8436) registry and imports only the Final result, with its issue, policy, source round, round count and adoption flag. Support kinds are a set, not a hierarchy: a finding records what its method supports, a derived conclusion inherits a list of sources, never their proof.
+
+**Not deciding has a meaning.** `NoDecision` is distinct from `NotSustained`; the policy says per claim kind whether an undetermined decisive finding falls on the claimant or ends in no decision; `NoDecision` routes to the disposition the business committed in advance, never to a consumer's improvisation. Every window has a consequence and a hard deadline closes every case; under the optional optimistic track, silence adopts a pre-accepted result and proves nothing.
+
+**Economics declared, not designed.** The kernel fixes what an economic declaration must state (instruments, purposes, flows under every state and result, assumptions, failure handling) and records what executors report; it endorses no loser-pays, bond or reward scheme, and being in the minority of a panel is not a violation.
+
+**What is in the reference repository.** Two registries (the dispute registry split into a thin contract and two externally linked libraries to stay under the code size limit), the ERC-8436 bridge, a formal verifier, an attestor-quorum evidence rule and a service-call escrow that is both obligation source and executor; JSON schemas for the policy, binding, case, finding, ruling and enactment documents; vectors cross-checked between ethers and solc; a 58-test Foundry suite that runs the two complete flows (a double charge verified on chain; a delivery-quality dispute judged by an ERC-8436 roster, including a NoDecision and a finality-by-adoption import) and the exception paths (no authority → Advisory, timeouts adopting an earlier decision, Advisory with no disposal, duplicate enactment refused, exclusivity, clock incompatibility); an evidence script rehearsed end to end on Anvil, to be run on Sepolia against the live ERC-8436 registry.
+
+**What is deliberately out of the first draft** (reserved, named in the text): panel replacement on review, non-binary outcomes, verifiable selection and independence screening, economic modules, private evidence, cross-chain carriage, mirrors into validation or reputation registries.
+
+Questions I would most value feedback on:
+
+1. The five admission criteria as the boundary of what can be filed as Binding — is anything missing that a consumer would need checked before a ruling can bind it?
+2. Support kinds as an unordered set with per-finding provenance — does anyone see a case where a consumer genuinely needs a kernel-level ordering?
+3. The exclusivity key `(source, obligationRef, proposition)` within one registry — is per-registry exclusivity the right honest scope, or should the text push consumers harder towards one registry per obligation?
+4. The J-profile's one-binary-question rule — whether a typed multi-option profile should be specified now or left reserved.
+
+Repository: `<repo link>` · PR: `<to be added after filing>`
