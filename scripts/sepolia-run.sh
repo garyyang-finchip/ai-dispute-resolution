@@ -17,7 +17,7 @@ cd "$(dirname "$0")/.."
 export ACDF_REGISTRY="${ACDF_REGISTRY:-0x3bE57E74f2E7c280073b6B16A1Db3F562758dB01}"   # ERC-8436 revision-3 registry on Sepolia
 CAP=16777216
 WAIT="${WAIT_SECONDS:-660}"
-RUN=(forge script script/SepoliaEvidence.s.sol --rpc-url "$SEPOLIA_RPC_URL" --broadcast --skip-simulation --gas-estimate-multiplier 150 --slow -vv)
+RUN=(forge script script/SepoliaEvidence.s.sol --rpc-url "$SEPOLIA_RPC_URL" --broadcast --skip-simulation --gas-estimate-multiplier 150 --slow --disable-code-size-limit -vv)
 
 say() { printf '\n== %s\n' "$*"; }
 
@@ -37,7 +37,7 @@ preflight() {
     for c in ADRFPolicyRegistry:"" ADRFDecisionModule:"$arg" ADRFFilingModule:"$arg" ADRFOutcomeModule:"$arg" ADRFResolutionModule:"$arg" ADRFServiceEscrow:"$arg"; do
         local name=${c%%:*} ctor=${c#*:}
         local code; code=$(forge inspect "$name" bytecode)
-        local est; est=$(cast estimate --create "${code}${ctor}" --rpc-url "$SEPOLIA_RPC_URL" 2>&1 || true)
+        local est; est=$(cast estimate --rpc-url "$SEPOLIA_RPC_URL" --create "${code}${ctor}" 2>&1 || true)
         if [[ "$est" =~ ^[0-9]+$ ]]; then
             printf '%-26s %12s gas  (%d%% of the cap)\n' "$name" "$est" $((est * 100 / CAP))
             [ "$est" -lt "$CAP" ] || ok=0

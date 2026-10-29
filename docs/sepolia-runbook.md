@@ -47,19 +47,19 @@ The runtime sizes are in `forge build --sizes`; the live cost of the three large
 ```
 forge build
 ARG=$(cast abi-encode "f(address)" 0x0000000000000000000000000000000000000001 | cut -c3-)
-cast estimate --create $(forge inspect ADRFPolicyRegistry bytecode) --rpc-url $SEPOLIA_RPC_URL
-cast estimate --create $(forge inspect ADRFDecisionModule bytecode)$ARG --rpc-url $SEPOLIA_RPC_URL
-cast estimate --create $(forge inspect ADRFFilingModule bytecode)$ARG --rpc-url $SEPOLIA_RPC_URL
+cast estimate --rpc-url $SEPOLIA_RPC_URL --create $(forge inspect ADRFPolicyRegistry bytecode)
+cast estimate --rpc-url $SEPOLIA_RPC_URL --create $(forge inspect ADRFDecisionModule bytecode)$ARG
+cast estimate --rpc-url $SEPOLIA_RPC_URL --create $(forge inspect ADRFFilingModule bytecode)$ARG
 ```
 
 Each figure must be below 16,777,216; expect about 13.5 million. If the node answers with an error instead of a number, the schedule has moved and the sizes have to be checked again before the run.
 
 ## Phases
 
-Every phase is one `forge script` invocation. `--skip-simulation` makes Foundry ask the node for the gas of each transaction; `--slow` makes it wait for each receipt before sending the next, which the phases with several senders (client, provider, jurors) require. The state of the run is kept in `deployments/11155111.json` (addresses, identifiers, the two case ids and the issue id) and read back by every later phase.
+Every phase is one `forge script` invocation. `--skip-simulation` makes Foundry ask the node for the gas of each transaction; `--slow` makes it wait for each receipt before sending the next, which the phases with several senders (client, provider, jurors) require; `--disable-code-size-limit` lifts the EIP-170 limit of Foundry's local EVM for the script contract itself (34 KB of logic, run locally and never sent to the chain). The script deploys every contract from its compiled artifact (`vm.deployCode`) rather than with `new`, so that its own creation code stays under the EIP-3860 initcode limit, which Foundry 1.7 applies to the local deployment of the script contract as well; the artifacts come from the project's own build, and the contracts created on chain are byte for byte the ones `forge build` produced. The state of the run is kept in `deployments/11155111.json` (addresses, identifiers, the two case ids and the issue id) and read back by every later phase.
 
 ```
-RUN="forge script script/SepoliaEvidence.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --skip-simulation --gas-estimate-multiplier 150 --slow -vv"
+RUN="forge script script/SepoliaEvidence.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --skip-simulation --gas-estimate-multiplier 150 --slow --disable-code-size-limit -vv"
 
 PHASE=deploy          $RUN   # policy registry, six modules, dispute registry, two verifiers, the evidence rule,
                               # the bridge over ACDF_REGISTRY, the ACDF fast-track policy, the attestor panel,

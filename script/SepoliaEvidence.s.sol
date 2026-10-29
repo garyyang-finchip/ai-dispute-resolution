@@ -6,6 +6,8 @@ import {ADRFTypes as T} from "adrf/ADRFTypes.sol";
 import {ADRFPolicyRegistry} from "adrf/ADRFPolicyRegistry.sol";
 import {ADRFDisputeRegistry} from "adrf/ADRFDisputeRegistry.sol";
 import {IADRFDisputeRegistry} from "adrf/interfaces/IADRFDisputeRegistry.sol";
+// The modules and the vendored ERC-8436 reference are imported so that their artifacts are part of this script's
+// compilation output (vm.deployCode finds them there); nothing here references their creation code.
 import {ADRFBindingModule} from "adrf/modules/ADRFBindingModule.sol";
 import {ADRFFilingModule} from "adrf/modules/ADRFFilingModule.sol";
 import {ADRFResolutionModule} from "adrf/modules/ADRFResolutionModule.sol";
@@ -28,6 +30,10 @@ import {ACDFRegistry as LocalACDFRegistry} from "acdf/ACDFRegistry.sol";
 /// real transactions. Phases (env PHASE): deploy | formal-file | formal-finalize | judged-file | judged-vote |
 /// judged-finalize. State is kept in deployments/<chainId>.json. Keys: PRIVATE_KEY (deployer); the client,
 /// provider and three jurors are derived from it and funded in the deploy phase.
+///
+/// Every contract is deployed from its compiled artifact (`vm.deployCode`), so that this script's own creation
+/// code stays small: a script that embeds the creation code of everything it deploys exceeds the EIP-3860 initcode
+/// limit that recent Foundry versions apply to the local deployment of the script contract itself.
 ///
 /// Rehearsal on Anvil (code size limit raised for the vendored ERC-8436 fixture):
 ///   anvil --code-size-limit 32768 &
@@ -133,19 +139,18 @@ contract SepoliaEvidence is Script {
         for (uint256 i = 0; i < 3; i++) jurors[i] = vm.addr(derived(pk, string.concat("juror", vm.toString(i))));
 
         vm.startBroadcast(pk);
-        ADRFPolicyRegistry pol = new ADRFPolicyRegistry();
-        ADRFBindingModule binding = new ADRFBindingModule(pol);
-        ADRFFilingModule filing = new ADRFFilingModule(pol);
-        ADRFResolutionModule resolution = new ADRFResolutionModule(pol);
-        ADRFDecisionModule decision = new ADRFDecisionModule(pol);
-        ADRFRecordModule record = new ADRFRecordModule(pol);
-        ADRFOutcomeModule outcome = new ADRFOutcomeModule(pol);
-        IADRFDisputeRegistry reg = IADRFDisputeRegistry(address(
-            new ADRFDisputeRegistry(pol, address(binding), address(filing), address(resolution), address(decision), address(record), address(outcome))
-        ));
-        DuplicateSettlementVerifier verifier = new DuplicateSettlementVerifier();
-        DeclaredVersionVerifier versionVerifier = new DeclaredVersionVerifier();
-        AttestorQuorumRule rule = new AttestorQuorumRule();
+        ADRFPolicyRegistry pol = ADRFPolicyRegistry(vm.deployCode("ADRFPolicyRegistry.sol:ADRFPolicyRegistry"));
+        address binding = vm.deployCode("ADRFBindingModule.sol:ADRFBindingModule", abi.encode(pol));
+        address filing = vm.deployCode("ADRFFilingModule.sol:ADRFFilingModule", abi.encode(pol));
+        address resolution = vm.deployCode("ADRFResolutionModule.sol:ADRFResolutionModule", abi.encode(pol));
+        address decision = vm.deployCode("ADRFDecisionModule.sol:ADRFDecisionModule", abi.encode(pol));
+        address record = vm.deployCode("ADRFRecordModule.sol:ADRFRecordModule", abi.encode(pol));
+        address outcome = vm.deployCode("ADRFOutcomeModule.sol:ADRFOutcomeModule", abi.encode(pol));
+        IADRFDisputeRegistry reg = IADRFDisputeRegistry(vm.deployCode("ADRFDisputeRegistry.sol:ADRFDisputeRegistry",
+            abi.encode(pol, binding, filing, resolution, decision, record, outcome)));
+        DuplicateSettlementVerifier verifier = DuplicateSettlementVerifier(vm.deployCode("DuplicateSettlementVerifier.sol:DuplicateSettlementVerifier"));
+        DeclaredVersionVerifier versionVerifier = DeclaredVersionVerifier(vm.deployCode("DeclaredVersionVerifier.sol:DeclaredVersionVerifier"));
+        AttestorQuorumRule rule = AttestorQuorumRule(vm.deployCode("AttestorQuorumRule.sol:AttestorQuorumRule"));
 
         // ERC-8436: the live registry (ACDF_REGISTRY) or a local deployment of the vendored reference on Anvil
         IACDFRegistry acdf;
@@ -155,7 +160,7 @@ contract SepoliaEvidence is Script {
             acdf = IACDFRegistry(deployLocalAcdf());
         }
         IACDFPolicyRegistry acdfPol = acdf.policies();
-        ADRFACDFBridge bridge = new ADRFACDFBridge(reg, acdf);
+        ADRFACDFBridge bridge = ADRFACDFBridge(vm.deployCode("ADRFACDFBridge.sol:ADRFACDFBridge", abi.encode(reg, acdf)));
 
         // fast-track ERC-8436 policy: 2-of-3 roster, 15-minute window, one appeal of 10 minutes
         A.BodySpec[] memory bodies = new A.BodySpec[](1);
@@ -186,7 +191,7 @@ contract SepoliaEvidence is Script {
         attestors[0] = jurors[0]; attestors[1] = jurors[1]; attestors[2] = jurors[2];
         s.panelId = rule.registerPanel(attestors, 2);
 
-        ADRFServiceEscrow escrow = new ADRFServiceEscrow(reg);
+        ADRFServiceEscrow escrow = ADRFServiceEscrow(payable(vm.deployCode("ADRFServiceEscrow.sol:ADRFServiceEscrow", abi.encode(reg))));
 
         // fast-track ADRF policy
         T.PolicySpec memory p;
@@ -236,7 +241,7 @@ contract SepoliaEvidence is Script {
         vm.stopBroadcast();
 
         s.policies = address(pol); s.registry = address(reg); s.verifier = address(verifier);
-        s.bindingModule = address(binding); s.filingModule = address(filing); s.resolutionModule = address(resolution); s.decisionModule = address(decision); s.recordModule = address(record); s.outcomeModule = address(outcome); s.versionVerifier = address(versionVerifier); s.rule = address(rule);
+        s.bindingModule = binding; s.filingModule = filing; s.resolutionModule = resolution; s.decisionModule = decision; s.recordModule = record; s.outcomeModule = outcome; s.versionVerifier = address(versionVerifier); s.rule = address(rule);
         s.bridge = address(bridge); s.escrow = address(escrow); s.acdfRegistry = address(acdf); s.acdfPolicies = address(acdfPol);
         save(s);
         console2.log("deployed; registry", address(reg));
@@ -245,9 +250,8 @@ contract SepoliaEvidence is Script {
     function deployLocalAcdf() internal returns (address) {
         // The vendored ERC-8436 reference (test/vendor/acdf) for rehearsals; Anvil must run with a raised code
         // size limit (the fixture is compiled here with optimizer runs 200). On Sepolia the live registry is used.
-        LocalACDFPolicyRegistry pol = new LocalACDFPolicyRegistry();
-        LocalACDFRegistry reg = new LocalACDFRegistry(pol);
-        return address(reg);
+        address pol = vm.deployCode("test/vendor/acdf/ACDFPolicyRegistry.sol:ACDFPolicyRegistry");
+        return vm.deployCode("test/vendor/acdf/ACDFRegistry.sol:ACDFRegistry", abi.encode(pol));
     }
 
     // ------------------------------------------------------------------ phase: formal
