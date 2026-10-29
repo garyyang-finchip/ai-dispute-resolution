@@ -1,5 +1,7 @@
 # Sepolia evidence runbook
 
+The run was executed on Sepolia on 2026-10-29 exactly as described here (Foundry 1.7.1 on the operator's machine; 46 transactions, all successful); its record is `docs/sepolia-evidence.md`.
+
 The evidence run deploys the ADRF kernel (the policy registry, the six modules and the dispute registry), the three methods, the bridge over the live ERC-8436 reference registry on Sepolia, the worked-example escrow bound to a fast-track policy, and walks the two complete flows with real transactions. It is the same script that was rehearsed on Anvil (`docs/test-record.md`): `script/SepoliaEvidence.s.sol`, run phase by phase.
 
 ## Sepolia since Glamsterdam

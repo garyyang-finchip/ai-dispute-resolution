@@ -2,7 +2,7 @@
 
 Reference repository of **ERC-8471, AI Dispute Resolution Framework (ADRF)** (Draft), for disputes about AI systems, resources and services and about the conduct, deliveries and declarations around them, between participants that may be people, organizations, agents or contracts: a dispute is a specific claim about a specific object — that an identified record, delivery, settlement, declaration or action does or does not conform to an obligation declared before the event — admitted under a pre-committed binding, resolved by typed methods and closed by a ruling whose effects are limited to what the binding authorized. What a dispute is about (which model, service, output, dataset, evaluation or promise) and how it is resolved (verifier, evidence, human or AI-assisted judgment, or a composition) are kept apart; nothing requires that AI be judged by AI, and nothing requires that a participant be an agent.
 
-Status: Draft. ERC-8471 was assigned on 2026-10-29 in [ethereum/ERCs#2123](https://github.com/ethereum/ERCs/pull/2123) (filed on 2026-10-28 under the placeholder number 9999); discussion thread: [ERC-8471: AI Dispute Resolution Framework (ADRF)](https://ethereum-magicians.org/t/erc-8471-ai-dispute-resolution-framework-adrf/30121) on Ethereum Magicians. This repository holds revision 3 (v0.3: the dispute registry as one address over six modules, so that every deployable unit stays within the per-transaction gas limit of Sepolia and of the networks that follow it; revision 2 was the generalization from agent disputes to AI disputes): reference implementation, schemas, vectors, worked examples, a 70-test Foundry suite that runs the two complete flows against the vendored ERC-8436 reference registry, and an evidence script rehearsed end to end on Anvil.
+Status: Draft. ERC-8471 was assigned on 2026-10-29 in [ethereum/ERCs#2123](https://github.com/ethereum/ERCs/pull/2123) (filed on 2026-10-28 under the placeholder number 9999); discussion thread: [ERC-8471: AI Dispute Resolution Framework (ADRF)](https://ethereum-magicians.org/t/erc-8471-ai-dispute-resolution-framework-adrf/30121) on Ethereum Magicians. This repository holds revision 3 (v0.3: the dispute registry as one address over six modules, so that every deployable unit stays within the per-transaction gas limit of Sepolia and of the networks that follow it; revision 2 was the generalization from agent disputes to AI disputes): reference implementation, schemas, vectors, worked examples, a 70-test Foundry suite that runs the two complete flows against the vendored ERC-8436 reference registry, and the evidence run executed on Sepolia on 2026-10-29 against the live ERC-8436 registry (46 transactions, all successful; addresses below, record in `docs/sepolia-evidence.md`).
 
 ## What it is
 
@@ -46,7 +46,9 @@ scripts/make-filing-package.py       builds ercs-pr-package/ for the ethereum/ER
 scripts/sepolia-run.sh               drives the Sepolia evidence run (pre-flight, the seven phases, the record);
                                      collect-sepolia-record.py assembles the transaction record from the broadcast files
 docs/                                design memo, Magicians post and revision notes, test record, evidence runbook
-deployments/                         evidence records (none yet; the Anvil rehearsal writes 31337.json, ignored)
+                                     and the Sepolia evidence record
+deployments/                         the Sepolia record (sepolia.json, sepolia.transactions.json); the Anvil
+                                     rehearsal writes 31337.json, ignored
 ```
 
 ## Build and test
@@ -67,7 +69,29 @@ Deploying the kernel means deploying the policy registry, the six modules (each 
 
 ## Evidence run
 
-`script/SepoliaEvidence.s.sol` deploys the registries (the dispute registry with its six modules), the methods, the bridge over a live ERC-8436 registry (`ACDF_REGISTRY`; on Anvil it deploys the vendored reference), the worked-example escrow bound to a fast-track policy, and walks the two complete flows with real transactions in phases (`PHASE=deploy | formal-file | formal-finalize | judged-file | judged-vote | judged-finalize | judged-close`). The rehearsal on Anvil ran all seven phases successfully; the Sepolia run follows the runbook in `docs/sepolia-runbook.md`.
+`script/SepoliaEvidence.s.sol` deploys the registries (the dispute registry with its six modules), the methods, the bridge over a live ERC-8436 registry (`ACDF_REGISTRY`; on Anvil it deploys the vendored reference), the worked-example escrow bound to a fast-track policy, and walks the two complete flows with real transactions in phases (`PHASE=deploy | formal-file | formal-finalize | judged-file | judged-vote | judged-finalize | judged-close`); `scripts/sepolia-run.sh` drives the whole run and `docs/sepolia-runbook.md` explains it. The rehearsal on Anvil ran all seven phases successfully, and the run was executed on Sepolia on 2026-10-29 (blocks 12017706–12017916, 46 transactions, all successful, 131.3 million gas, 0.0077 ETH in fees): a double charge verified on chain and refunded, and a delivery-quality claim judged by a 2-of-3 roster through the live ERC-8436 registry, imported as a Final result and refunded. The record is `docs/sepolia-evidence.md` with `deployments/sepolia.json` and `deployments/sepolia.transactions.json`; `scripts/sepolia-readback.sh` reads the state back from the chain.
+
+## Sepolia
+
+Chain id 11155111; deployed 2026-10-29 by `0x2cF07458835437ce44C06f92BbfD30CCd3794dCF`; the live ERC-8436 registry is the acd-framework revision-3 `ACDFRegistry` `0x3bE57E74f2E7c280073b6B16A1Db3F562758dB01`.
+
+| contract | address |
+|---|---|
+| `ADRFPolicyRegistry` | `0x071093a38289b5f9578D0162727b05A52E07eed5` |
+| `ADRFDisputeRegistry` (one address for the whole interface) | `0x4e27C4728B22c3306f2378b8B421774dc35fE0a9` |
+| `ADRFBindingModule` | `0x1D2CCC2eE1f8203d5f66aAA0f3a9b889253f32c2` |
+| `ADRFFilingModule` | `0x64C86Cd5992DF93818479f4EEaA601FFf7C5f209` |
+| `ADRFResolutionModule` | `0x75a104902744A5793306A25ea2bbDc85a0E77ce4` |
+| `ADRFDecisionModule` | `0x87EDf76351Cbfc210Ae78a1487Ed4b0BB80c5d52` |
+| `ADRFRecordModule` | `0x7F620C43eB7Bf43c19b20eAa49aBB37f93f1Be69` |
+| `ADRFOutcomeModule` | `0x999BEf843E8ADba949e688C321D7b5bF37efea55` |
+| `ADRFACDFBridge` (J-profile over ERC-8436) | `0xeC31cb06CEFCd871Bc36cD5267bC3fe9A21c60EB` |
+| `DuplicateSettlementVerifier` | `0x2c5a24596E08379fF9CF9DfF3AaaD4861ba5c4Ae` |
+| `DeclaredVersionVerifier` | `0x612fe0B072492FbaF9754032f2Ceb3bce2aBB6DC` |
+| `AttestorQuorumRule` | `0xDe666e792730efE4E633D8E185a10Df4291dE597` |
+| `ADRFServiceEscrow` (worked example) | `0xD85e5E73D385e6575342bd86263F34b17b287128` |
+
+Identifiers of the run: ADRF policy `0x9f32ee8ce20bf6c70360e6f6d9565ea9a162055976c98ebe0b1cec8eb3244afb`, binding `0x4fe9f35788f6f53142542c2fd83c32ab447961985228a97f3ce60522d3f593f2`, formal case `0x1bc24c2ea078c1819f1b0914aadcb54570f8d87de3f28041e947f0c4590b88ee` (Final, Sustained, refund Enacted), judged case `0xee91e70309a170992baa2d537538745b55595891095442255c31392928e08c19` (Final, Sustained from the imported `FALSE`, refund Enacted), ERC-8436 issue `0xbe51f9c5657413332cab60ef0296e4fc7f8f5fc2814294a16890fade03d6a9c6` (Final, Decided, no). The contracts are submitted to Sourcify from the standard JSON input (`scripts/sepolia-verify.sh`).
 
 ## Objects in scope
 
