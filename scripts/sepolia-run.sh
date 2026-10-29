@@ -3,12 +3,14 @@
 #
 #   export SEPOLIA_RPC_URL=https://...        # any Sepolia JSON-RPC endpoint
 #   export PRIVATE_KEY=0x...                  # the deployer; funds the derived actors itself
-#   scripts/sepolia-run.sh preflight          # chain id, balance, ERC-8436 registry, the three largest creations vs the cap
-#   scripts/sepolia-run.sh all                # the seven phases in order, waiting 11 minutes where a window must lapse
-#   scripts/sepolia-run.sh record             # deployments/sepolia.json + deployments/sepolia.transactions.json
+#   bash scripts/sepolia-run.sh preflight     # chain id, balance, ERC-8436 registry, the six largest creations vs the cap
+#   bash scripts/sepolia-run.sh all           # the seven phases in order, waiting 11 minutes where a window must lapse
+#   bash scripts/sepolia-run.sh record        # deployments/sepolia.json + deployments/sepolia.transactions.json
 #
-# Single phases: scripts/sepolia-run.sh deploy | formal-file | formal-finalize | judged-file | judged-vote | judged-finalize | judged-close
-# Requires Foundry (forge, cast) and python3. Nothing here needs any key other than PRIVATE_KEY.
+# Single phases: bash scripts/sepolia-run.sh deploy | formal-file | formal-finalize | judged-file | judged-vote | judged-finalize | judged-close
+# Requires Foundry (forge, cast; rehearsed with 1.5.1 and 1.7.1) and python3. Nothing here needs any key other than PRIVATE_KEY.
+# --code-size-limit 65536 lifts the EIP-170 limit of Foundry's local EVM for the script contract itself (34 KB of logic,
+# never sent to the chain); Foundry 1.7 applies the limit of foundry.toml (32768, set for the ERC-8436 test fixture) to it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -17,7 +19,7 @@ cd "$(dirname "$0")/.."
 export ACDF_REGISTRY="${ACDF_REGISTRY:-0x3bE57E74f2E7c280073b6B16A1Db3F562758dB01}"   # ERC-8436 revision-3 registry on Sepolia
 CAP=16777216
 WAIT="${WAIT_SECONDS:-660}"
-RUN=(forge script script/SepoliaEvidence.s.sol --rpc-url "$SEPOLIA_RPC_URL" --broadcast --skip-simulation --gas-estimate-multiplier 150 --slow --disable-code-size-limit -vv)
+RUN=(forge script script/SepoliaEvidence.s.sol --rpc-url "$SEPOLIA_RPC_URL" --broadcast --skip-simulation --gas-estimate-multiplier 150 --slow --code-size-limit 65536 -vv)
 
 say() { printf '\n== %s\n' "$*"; }
 

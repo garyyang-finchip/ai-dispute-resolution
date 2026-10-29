@@ -18,9 +18,9 @@ Base fees on Sepolia have been between a few wei and about 1.2 gwei in October. 
 ```
 export SEPOLIA_RPC_URL=https://...
 export PRIVATE_KEY=0x...
-scripts/sepolia-run.sh preflight
-scripts/sepolia-run.sh all          # about 40 minutes, most of it waiting
-scripts/sepolia-run.sh record       # deployments/sepolia.json, deployments/sepolia.transactions.json
+bash scripts/sepolia-run.sh preflight
+bash scripts/sepolia-run.sh all          # about 40 minutes, most of it waiting
+bash scripts/sepolia-run.sh record       # deployments/sepolia.json, deployments/sepolia.transactions.json
 ```
 
 The rest of this document is what the script does, for running it by hand or for reading the result.
@@ -56,10 +56,10 @@ Each figure must be below 16,777,216; expect about 13.5 million. If the node ans
 
 ## Phases
 
-Every phase is one `forge script` invocation. `--skip-simulation` makes Foundry ask the node for the gas of each transaction; `--slow` makes it wait for each receipt before sending the next, which the phases with several senders (client, provider, jurors) require; `--disable-code-size-limit` lifts the EIP-170 limit of Foundry's local EVM for the script contract itself (34 KB of logic, run locally and never sent to the chain). The script deploys every contract from its compiled artifact (`vm.deployCode`) rather than with `new`, so that its own creation code stays under the EIP-3860 initcode limit, which Foundry 1.7 applies to the local deployment of the script contract as well; the artifacts come from the project's own build, and the contracts created on chain are byte for byte the ones `forge build` produced. The state of the run is kept in `deployments/11155111.json` (addresses, identifiers, the two case ids and the issue id) and read back by every later phase.
+Every phase is one `forge script` invocation. `--skip-simulation` makes Foundry ask the node for the gas of each transaction; `--slow` makes it wait for each receipt before sending the next, which the phases with several senders (client, provider, jurors) require; `--code-size-limit 65536` lifts the EIP-170 limit of Foundry's local EVM for the script contract itself (34 KB of logic, run locally and never sent to the chain; Foundry 1.7 applies the 32,768-byte limit of `foundry.toml`, set for the ERC-8436 test fixture, to the script contract too, where Foundry 1.5 exempted it). The script deploys every contract from its compiled artifact (`vm.deployCode`) rather than with `new`, so that its own creation code stays under the EIP-3860 initcode limit, which Foundry 1.7 applies to the local deployment of the script contract as well; the artifacts come from the project's own build, and the contracts created on chain are byte for byte the ones `forge build` produced. The run was rehearsed on Anvil with these exact flags under Foundry 1.5.1 and 1.7.1. The state of the run is kept in `deployments/11155111.json` (addresses, identifiers, the two case ids and the issue id) and read back by every later phase.
 
 ```
-RUN="forge script script/SepoliaEvidence.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --skip-simulation --gas-estimate-multiplier 150 --slow --disable-code-size-limit -vv"
+RUN="forge script script/SepoliaEvidence.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --skip-simulation --gas-estimate-multiplier 150 --slow --code-size-limit 65536 -vv"
 
 PHASE=deploy          $RUN   # policy registry, six modules, dispute registry, two verifiers, the evidence rule,
                               # the bridge over ACDF_REGISTRY, the ACDF fast-track policy, the attestor panel,
