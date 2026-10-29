@@ -91,7 +91,7 @@ Chain id 11155111; deployed 2026-10-29 by `0x2cF07458835437ce44C06f92BbfD30CCd37
 | `AttestorQuorumRule` | `0xDe666e792730efE4E633D8E185a10Df4291dE597` |
 | `ADRFServiceEscrow` (worked example) | `0xD85e5E73D385e6575342bd86263F34b17b287128` |
 
-Identifiers of the run: ADRF policy `0x9f32ee8ce20bf6c70360e6f6d9565ea9a162055976c98ebe0b1cec8eb3244afb`, binding `0x4fe9f35788f6f53142542c2fd83c32ab447961985228a97f3ce60522d3f593f2`, formal case `0x1bc24c2ea078c1819f1b0914aadcb54570f8d87de3f28041e947f0c4590b88ee` (Final, Sustained, refund Enacted), judged case `0xee91e70309a170992baa2d537538745b55595891095442255c31392928e08c19` (Final, Sustained from the imported `FALSE`, refund Enacted), ERC-8436 issue `0xbe51f9c5657413332cab60ef0296e4fc7f8f5fc2814294a16890fade03d6a9c6` (Final, Decided, no). The contracts are submitted to Sourcify from the standard JSON input (`scripts/sepolia-verify.sh`).
+Identifiers of the run: ADRF policy `0x9f32ee8ce20bf6c70360e6f6d9565ea9a162055976c98ebe0b1cec8eb3244afb`, binding `0x4fe9f35788f6f53142542c2fd83c32ab447961985228a97f3ce60522d3f593f2`, formal case `0x1bc24c2ea078c1819f1b0914aadcb54570f8d87de3f28041e947f0c4590b88ee` (Final, Sustained, refund Enacted), judged case `0xee91e70309a170992baa2d537538745b55595891095442255c31392928e08c19` (Final, Sustained from the imported `FALSE`, refund Enacted), ERC-8436 issue `0xbe51f9c5657413332cab60ef0296e4fc7f8f5fc2814294a16890fade03d6a9c6` (Final, Decided, no). All thirteen contracts are verified on Sourcify (runtime and creation bytecode `match`; `scripts/sepolia-verify.sh`).
 
 ## Objects in scope
 
