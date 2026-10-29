@@ -70,7 +70,7 @@ abstract contract ADRFBase is Test {
     bytes32 constant EFFECT_FEE_SPLIT = keccak256("adrf:effect/fee-split");
     bytes32 REFUND;            // REFUND, cached so that expectRevert/prank target the intended call
     bytes32 STATUS_QUO;        // STATUS_QUO
-    bytes32 EVENT_SETTLEMENT;
+    bytes32 EVENT_SETTLEMENT_2;      // the second settlement of the fixture call: the double charge
     bytes32 EVENT_DELIVERY;
     uint8 KIND_RESULT;
     uint8 KIND_LIMIT;
@@ -99,7 +99,7 @@ abstract contract ADRFBase is Test {
         escrow = new ADRFServiceEscrow(reg);
         REFUND = escrow.EFFECT_REFUND();
         STATUS_QUO = escrow.DISPOSITION_STATUS_QUO();
-        EVENT_SETTLEMENT = escrow.EVENT_SETTLEMENT();
+        EVENT_SETTLEMENT_2 = escrow.settlementEventRef(2);
         EVENT_DELIVERY = escrow.EVENT_DELIVERY();
         KIND_RESULT = escrow.KIND_RESULT();
         KIND_LIMIT = escrow.KIND_LIMIT();
@@ -262,11 +262,24 @@ abstract contract ADRFBase is Test {
         c.supportsWhen = supportsWhen;
     }
 
-    /// Claim: the call was charged twice (formal, LIMIT obligation).
+    /// Claim: the call was charged twice (formal, LIMIT obligation): the event is the second settlement, the
+    /// decisive sub-question the verifier's proposition for that settlement.
     function duplicateClaim() internal view returns (T.ClaimInput memory c) {
-        c = baseClaim(EVENT_SETTLEMENT, PROP_DUPLICATE_CLAIM, CLAUSE_ONE_CHARGE, KIND_LIMIT, T.Value.TRUE);
+        c = baseClaim(EVENT_SETTLEMENT_2, PROP_DUPLICATE_CLAIM, CLAUSE_ONE_CHARGE, KIND_LIMIT, T.Value.TRUE);
         c.subQuestions = new T.SubQuestionInput[](1);
-        c.subQuestions[0] = sub(verifier.propositionFor(address(escrow), callId), T.QuestionType.FORMAL, KIND_LIMIT, keccak256(abi.encode(callId)));
+        c.subQuestions[0] = sub(dupProposition(callId, 2), T.QuestionType.FORMAL, KIND_LIMIT, dupInputsHash(callId, 2));
+    }
+
+    function dupProposition(uint256 id, uint32 ordinal) internal view returns (bytes32) {
+        return verifier.propositionFor(address(escrow), id, ordinal);
+    }
+
+    function dupInputs(uint256 id, uint32 ordinal) internal pure returns (bytes memory) {
+        return abi.encode(id, ordinal);
+    }
+
+    function dupInputsHash(uint256 id, uint32 ordinal) internal pure returns (bytes32) {
+        return keccak256(abi.encode(id, ordinal));
     }
 
     /// Claim: the delivery does not conform (judged, RESULT obligation); sustained when conformity is FALSE.

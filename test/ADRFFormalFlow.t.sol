@@ -2,6 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {ADRFBase, T, E} from "./ADRFBase.t.sol";
+import {MockSource} from "./mocks/MockSource.sol";
+import {ADRFServiceEscrow} from "adrf/examples/ADRFServiceEscrow.sol";
 
 /// Complete flow 1: a deterministic question (the call was charged twice) verified on chain, a Final ruling
 /// that allows one substantive effect, enacted once by the bound escrow within its own authority.
@@ -28,13 +30,13 @@ contract ADRFFormalFlowTest is ADRFBase {
 
         // anyone may run the verifier over the pinned inputs
         vm.prank(rando);
-        reg.resolveFormal(caseId, 0, abi.encode(callId));
+        reg.resolveFormal(caseId, 0, dupInputs(callId, 2));
         T.Finding memory f = reg.getFinding(caseId, 0);
         assertTrue(f.resolved);
         assertValue(f.value, T.Value.TRUE);
         assertEq(f.supportKinds, T.SUPPORT_COMPUTED);
         assertEq(f.acceptedBy, address(verifier));
-        assertEq(f.resultHash, keccak256(abi.encode(address(escrow), callId, uint32(2))));
+        assertEq(f.resultHash, keccak256(abi.encode(address(escrow), callId, uint32(2), uint32(2)))); // ledger, call, ordinal, count
 
         // decision: the claim named TRUE as the supporting value
         reg.decide(caseId);
@@ -60,12 +62,17 @@ contract ADRFFormalFlowTest is ADRFBase {
         assertEq(reg.activeCaseOf(h.exclusivityKey), bytes32(0), "active slot released");
         assertEq(reg.finalCaseOf(h.exclusivityKey), caseId, "final case recorded");
 
-        // enactment by the executor, within its own authority, idempotent
+        // enactment by the executor, within its own authority, idempotent: the second settlement, held by the
+        // escrow until its dispute period, goes back to the client; the provider never had it
         uint256 clientBefore = escrow.balanceOf(client);
-        uint256 providerBefore = escrow.balanceOf(provider);
+        assertEq(escrow.balanceOf(provider), 0, "nothing released to the provider yet");
+        assertEq(escrow.heldOf(callId), 2 ether, "both settlements held");
         escrow.enact(caseId, REFUND);
         assertEq(escrow.balanceOf(client), clientBefore + 1 ether);
-        assertEq(escrow.balanceOf(provider), providerBefore - 1 ether);
+        assertEq(escrow.balanceOf(provider), 0);
+        assertEq(escrow.heldOf(callId), 1 ether, "the first charge stays held for the provider");
+        (, ADRFServiceEscrow.SettlementState st) = escrow.settlementOf(callId, 2);
+        assertEq(uint8(st), uint8(ADRFServiceEscrow.SettlementState.Refunded));
         T.Enactment memory en = reg.getEnactment(caseId, REFUND);
         assertEq(uint8(en.status), uint8(T.EnactmentStatus.Enacted));
         assertEq(en.reporter, address(escrow));
@@ -80,7 +87,7 @@ contract ADRFFormalFlowTest is ADRFBase {
 
     function test_enactmentLog_authorityAndEffects() public {
         bytes32 caseId = fileAs(client, duplicateClaim());
-        reg.resolveFormal(caseId, 0, abi.encode(callId));
+        reg.resolveFormal(caseId, 0, dupInputs(callId, 2));
         reg.decide(caseId);
         // not Final yet
         vm.prank(address(escrow));
@@ -124,18 +131,28 @@ contract ADRFFormalFlowTest is ADRFBase {
     }
 
     function test_formal_notSustainedWhenVerifierSaysFalse() public {
-        // a call charged once: the verifier answers FALSE, the claim is not sustained, no effect is allowed
+        // a call charged once: the escrow itself attests no second settlement, so the claim is not even
+        // identifiable there (see test_dup_secondSettlementMustExist); a source that attests the event anyway
+        // gets the verifier's FALSE, the claim is not sustained and no effect is allowed
         vm.prank(client);
         uint256 c2 = escrow.openCall(provider, 1 ether, TERMS, V2, 30 * DAY);
         vm.warp(block.timestamp + 1);
         vm.prank(provider);
         escrow.settle(c2);
+        MockSource attester = new MockSource(reg);
+        T.EventInfo memory i;
+        i.known = true; i.eventAt = uint64(block.timestamp) - 1; i.obligationRef = keccak256("payment");
+        i.normRef = TERMS; i.normDeclaredAt = i.eventAt - 1 days; i.obligationKind = KIND_LIMIT;
+        attester.setInfo(i);
+        attester.setParty(client, true); attester.setParty(provider, true);
+        bytes32 b2 = attester.bind(bindingInput(policyId, T.AcceptanceMode.PRE_COMMIT));
         T.ClaimInput memory claim = duplicateClaim();
-        claim.object = escrow.objectOf(c2);
-        claim.subQuestions[0].proposition = verifier.propositionFor(address(escrow), c2);
-        claim.subQuestions[0].inputsHash = keccak256(abi.encode(c2));
-        bytes32 caseId = fileAs(client, claim);
-        reg.resolveFormal(caseId, 0, abi.encode(c2));
+        claim.object = T.ObjectRef({chainId: block.chainid, target: address(attester), id: c2, versionHash: keccak256("v")});
+        claim.subQuestions[0].proposition = dupProposition(c2, 2);
+        claim.subQuestions[0].inputsHash = dupInputsHash(c2, 2);
+        vm.prank(client);
+        bytes32 caseId = reg.file(b2, claim);
+        reg.resolveFormal(caseId, 0, dupInputs(c2, 2));
         assertValue(reg.getFinding(caseId, 0).value, T.Value.FALSE);
         reg.decide(caseId);
         vm.warp(block.timestamp + 2 * DAY + 1);
@@ -164,7 +181,7 @@ contract ADRFFormalFlowTest is ADRFBase {
         assertReason(r.reason, T.Reason.BURDEN_NOT_MET);
         // the verifier can no longer be run after the decision window
         vm.expectRevert(abi.encodeWithSelector(E.ADRF_WrongState.selector, caseId, uint8(T.ProcedureState.Provisional)));
-        reg.resolveFormal(caseId, 0, abi.encode(callId));
+        reg.resolveFormal(caseId, 0, dupInputs(callId, 2));
     }
 
     function test_evidenceWindow() public {
@@ -180,7 +197,7 @@ contract ADRFFormalFlowTest is ADRFBase {
     function test_leadReportOpensNothing() public {
         vm.prank(rando);
         reg.reportLead(escrow.objectOf(callId), keccak256("something looks wrong"), "ipfs://lead");
-        bytes32 key = reg.exclusivityKeyOf(address(escrow), keccak256(abi.encode(callId, "payment")), PROP_DUPLICATE_CLAIM);
+        bytes32 key = reg.exclusivityKeyOf(address(escrow), keccak256(abi.encode(callId, "payment")), dupProposition(callId, 2));
         assertEq(reg.activeCaseOf(key), bytes32(0));
     }
 }

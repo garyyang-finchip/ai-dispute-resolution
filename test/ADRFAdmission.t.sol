@@ -219,13 +219,18 @@ contract ADRFAdmissionTest is ADRFBase {
         bytes32 first = fileMock(claimant, mockClaim());
         bytes32 key = reg.getCase(first).exclusivityKey;
         expectFileRevert(claimant, mockClaim(), abi.encodeWithSelector(E.ADRF_Duplicate.selector, key, first));
-        // a different contested point on the same obligation is a different key
+        // the key is taken on the decisive sub-question: the same point under another headline is the same key
+        T.ClaimInput memory reworded = mockClaim();
+        reworded.proposition = keccak256("claim: the same point, differently worded");
+        expectFileRevert(claimant, reworded, abi.encodeWithSelector(E.ADRF_Duplicate.selector, key, first));
+        // a different decisive proposition on the same obligation is a different key
         T.ClaimInput memory other = mockClaim();
-        other.proposition = keccak256("claim: a different point");
+        other.subQuestions[0].proposition = keccak256("a different point");
         bytes32 second = fileMock(claimant, other);
         assertTrue(reg.getCase(second).exclusivityKey != key);
+        assertEq(reg.getCase(second).exclusivityKey, reg.exclusivityKeyOf(address(mock), keccak256("obligation"), keccak256("a different point")));
         // after finality the same point cannot be re-filed as Binding
-        reg.resolveFormal(first, 0, abi.encode(callId));
+        reg.resolveFormal(first, 0, dupInputs(callId, 2));
         reg.decide(first);
         vm.warp(block.timestamp + 2 * DAY + 1);
         reg.finalize(first);
@@ -288,7 +293,7 @@ contract ADRFAdmissionTest is ADRFBase {
         assertEq(reg.activeCaseOf(key), bytes32(0));
         // nothing can be done with a case that was not admitted
         vm.expectRevert(abi.encodeWithSelector(E.ADRF_WrongState.selector, id2, uint8(T.ProcedureState.NotAdmitted)));
-        reg.resolveFormal(id2, 0, abi.encode(callId));
+        reg.resolveFormal(id2, 0, dupInputs(callId, 2));
         // the ruling view reports the procedure state and no result
         T.Ruling memory u = reg.getRuling(id2);
         assertEq(uint8(u.state), uint8(T.ProcedureState.NotAdmitted));
@@ -314,7 +319,7 @@ contract ADRFAdmissionTest is ADRFBase {
         assertEq(h.source, address(0));
         assertEq(h.bindingId, bytes32(0));
         assertEq(h.exclusivityKey, bytes32(0));
-        reg.resolveFormal(id, 0, abi.encode(callId));
+        reg.resolveFormal(id, 0, dupInputs(callId, 2));
         reg.decide(id);
         vm.warp(block.timestamp + 2 * DAY + 1);
         reg.finalize(id);

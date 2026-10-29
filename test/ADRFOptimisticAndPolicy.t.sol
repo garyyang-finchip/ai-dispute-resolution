@@ -35,8 +35,9 @@ contract ADRFOptimisticAndPolicyTest is ADRFBase {
     function optClaim() internal view returns (T.ClaimInput memory c) {
         c = duplicateClaim();
         c.object = e2.objectOf(c2);
-        c.subQuestions[0].proposition = verifier.propositionFor(address(e2), c2);
-        c.subQuestions[0].inputsHash = keccak256(abi.encode(c2));
+        c.eventRef = e2.settlementEventRef(2);
+        c.subQuestions[0].proposition = verifier.propositionFor(address(e2), c2, 2);
+        c.subQuestions[0].inputsHash = dupInputsHash(c2, 2);
     }
 
     function test_optimistic_silenceAdoptsTheSilenceRule() public {
@@ -84,7 +85,7 @@ contract ADRFOptimisticAndPolicyTest is ADRFBase {
         vm.warp(block.timestamp + DAY + 1);
         vm.expectRevert(abi.encodeWithSelector(E.ADRF_AlreadyAnswered.selector, caseId));
         reg.applySilence(caseId);
-        reg.resolveFormal(caseId, 0, abi.encode(c2));
+        reg.resolveFormal(caseId, 0, dupInputs(c2, 2));
         reg.decide(caseId);
         assertEq(uint8(reg.getRound(caseId, 1).result), uint8(T.SubstantiveResult.Sustained));
         assertFalse(reg.getRound(caseId, 1).bySilence);
@@ -94,7 +95,7 @@ contract ADRFOptimisticAndPolicyTest is ADRFBase {
         T.ClaimInput memory claim = optClaim();
         vm.prank(client);
         bytes32 caseId = reg.file(b2, claim);
-        reg.resolveFormal(caseId, 0, abi.encode(c2));
+        reg.resolveFormal(caseId, 0, dupInputs(c2, 2));
         vm.warp(block.timestamp + DAY + 1);
         vm.expectRevert(abi.encodeWithSelector(E.ADRF_AlreadyResolved.selector, uint32(0)));
         reg.applySilence(caseId);

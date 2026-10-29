@@ -85,7 +85,9 @@ write('policy-id.json', {
 // -------------------------------------------------------------------------------------- keys
 const object = { chainId: CHAIN, target: escrow, id: 17, versionHash: L.id('call 17 terms v1') };
 const obligationRef = L.keccak256(L.coder.encode(['uint256', 'string'], [17, 'payment']));
-const proposition = L.id('claim: the call was charged twice');
+// the contested point is the decisive sub-question's proposition: the duplicate-settlement verifier's canonical
+// statement for (ledger, call 17, settlement 2)
+const proposition = L.keccak256(L.coder.encode(['bytes32', 'address', 'uint256', 'uint32'], [L.id('adrf:prop/duplicate-settlement/v2'), escrow, 17, 2]));
 const caseId = L.registryId(CHAIN, '0x00000000000000000000000000000000000ad2f0', 1);
 write('keys.json', {
   chainId: CHAIN,
@@ -105,5 +107,5 @@ write('keys.json', {
     effectFalse: L.CONSTANTS.EFFECT_FALSE,
     disposition: L.CONSTANTS.DISPOSITION_UNDETERMINED,
   },
-  note: 'objectKey = keccak256(abi.encode(ObjectRef)); exclusivityKey = keccak256(abi.encode(source, obligationRef, proposition)); registry ids = keccak256(abi.encode(chainId, registry, nonce)); the bridge obligation id = keccak256(abi.encode(caseId, subQuestion)) and question = keccak256(abi.encode(keccak256("adrf:judgment/v1"), subQuestion)).',
+  note: 'objectKey = keccak256(abi.encode(ObjectRef)); exclusivityKey = keccak256(abi.encode(source, obligationRef, proposition)) where proposition is the decisive sub-question\'s (here keccak256(abi.encode(keccak256("adrf:prop/duplicate-settlement/v2"), ledger, callId, ordinal)) for settlement 2 of call 17); registry ids = keccak256(abi.encode(chainId, registry, nonce)); the bridge obligation id = keccak256(abi.encode(caseId, subQuestion)) and question = keccak256(abi.encode(keccak256("adrf:judgment/v1"), subQuestion)).',
 });

@@ -53,7 +53,7 @@ contract ADRFGeneralizationTest is ADRFBase {
         assertEq(h.respondent, provider, "the obligor answers the claim");
         assertEq(h.actorRef, SERVICE_ENDPOINT, "the actor is recorded apart from the obligor");
         assertEq(h.claimant, client);
-        reg.resolveFormal(caseId, 0, abi.encode(callId));
+        reg.resolveFormal(caseId, 0, dupInputs(callId, 2));
         reg.decide(caseId);
         vm.warp(block.timestamp + 2 * DAY + 1);
         reg.finalize(caseId);

@@ -2,7 +2,8 @@
 # Reads the state of the Sepolia evidence run back from the chain, for the evidence document.
 #
 #   export SEPOLIA_RPC_URL=https://...
-#   bash scripts/sepolia-readback.sh [deployments/sepolia.json] [deployments/sepolia.transactions.json]
+#   bash scripts/sepolia-readback.sh [deployments/<record>.json] [deployments/<record>.transactions.json]
+#   (default: the record named by RECORD, sepolia-rev4 unless set; the revision-3 record is deployments/sepolia.json)
 #
 # Prints: the block timestamps of the phase boundaries, the two cases (header, clock, decisive finding, round 1,
 # ruling, enactment of the refund), the ERC-8436 issue and its result, the escrow's record of the two calls and the
@@ -10,8 +11,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${SEPOLIA_RPC_URL:?set SEPOLIA_RPC_URL}"
-D="${1:-deployments/sepolia.json}"
-TX="${2:-deployments/sepolia.transactions.json}"
+RECORD="${RECORD:-sepolia-rev4}"
+D="${1:-deployments/$RECORD.json}"
+TX="${2:-deployments/$RECORD.transactions.json}"
 j() { python3 -c "import json,sys; print(json.load(open('$D'))['$1'])"; }
 call() { cast call --rpc-url "$SEPOLIA_RPC_URL" "$@"; }
 
@@ -68,8 +70,18 @@ echo "-- bridge.issueOf(keccak(caseJudged, 0)) = $(call "$BRIDGE" 'issueOf(bytes
 echo
 echo "== escrow $ESC"
 for c in $(j callFormal) $(j callJudged); do
-    echo "-- call $c: settlementCount = $(call "$ESC" 'settlementCount(uint256)(uint32)' "$c"); versionsOf (committed, declared) = $(call "$ESC" 'versionsOf(uint256)(bytes32,bytes32)' "$c" | tr '\n' ' ')"
+    n=$(call "$ESC" 'settlementCount(uint256)(uint32)' "$c")
+    echo "-- call $c: settlementCount = $n; heldOf = $(call "$ESC" 'heldOf(uint256)(uint256)' "$c") wei; versionsOf (committed, declared) = $(call "$ESC" 'versionsOf(uint256)(bytes32,bytes32)' "$c" | tr '\n' ' ')"
+    for ((k = 1; k <= n; k++)); do
+        echo "   settlement $k: (at, state 0 Held / 1 Released / 2 Refunded) = $(call "$ESC" 'settlementOf(uint256,uint32)(uint64,uint8)' "$c" "$k" | tr '\n' ' '); eventRef = $(call "$ESC" 'settlementEventRef(uint32)(bytes32)' "$k")"
+    done
 done
+echo "-- balanceOf(provider) = $(call "$ESC" 'balanceOf(address)(uint256)' "$(python3 - "$TX" <<'PY'
+import json,sys
+tx=json.load(open(sys.argv[1]))['transactions']
+print([t['to'] for t in tx if t['phase']=='deploy' and t['kind']=='CALL' and t['function'] is None][1])
+PY
+)") wei (released settlements only; nothing is credited at settlement)"
 echo
 echo "== balances (ETH)"
 python3 - "$TX" <<'EOF' | while read -r label addr; do printf '%-10s %s  %s\n' "$label" "$addr" "$(cast balance "$addr" --rpc-url "$SEPOLIA_RPC_URL" --ether)"; done

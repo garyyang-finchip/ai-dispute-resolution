@@ -68,7 +68,7 @@
     "economicDeclaration": "0xe442ca770e7d79425b2e9a728c0a00f2bd9a38ccccdee379c83419035b209f7c",
     "descriptorHash": "0x5301b0d8522e9aa388ecaaaecafd8fee3defcdefd80d484d7efe15718480fbb7"
   },
-  "termsHash": "0x37eb7dcef451de7e88321dd3169777062d13967a44e0faf429d6475b80e64f5b",
+  "termsHash": "0xe1820cd38c6849f7ce070720d9af63a24a1ce93e7707520ae5928e36c12222d8",
   "files": {
     "policy-service-call.json": {
       "kind": "adrf-policy",
@@ -76,11 +76,11 @@
     },
     "binding-service-escrow.json": {
       "kind": "adrf-binding",
-      "contentHash": "0x37eb7dcef451de7e88321dd3169777062d13967a44e0faf429d6475b80e64f5b"
+      "contentHash": "0xe1820cd38c6849f7ce070720d9af63a24a1ce93e7707520ae5928e36c12222d8"
     },
     "case-duplicate-charge.json": {
       "kind": "adrf-case",
-      "contentHash": "0x5ba4651aae1e5db74311f82e818ff93db678becfb696a02950a5929a57d59fe5"
+      "contentHash": "0xf30468785a85b18d141dd67efc5493d2bed0788861a75450ba2448f479434df4"
     },
     "case-delivery-quality.json": {
       "kind": "adrf-case",
@@ -88,7 +88,7 @@
     },
     "finding-duplicate-charge.json": {
       "kind": "adrf-finding",
-      "contentHash": "0xed7a9a62138a2b21072e49d3a829523a31f321631351db39b2bbf02838aecb01"
+      "contentHash": "0xbbd744477b30bfe9f6fe72b4b6c877b29d8c7e7ce49303a67ad14c482b366eff"
     },
     "finding-delivery-quality.json": {
       "kind": "adrf-finding",
@@ -96,7 +96,7 @@
     },
     "ruling-duplicate-charge.json": {
       "kind": "adrf-ruling",
-      "contentHash": "0xf44db3ea3fb6ff3c3d7ac6ed96ed3dbe84db56981d06c63d0f93e82b78694da1"
+      "contentHash": "0x01fa008bf041d855035d9d5726560a8a5da452fdd8cde44b217a91f2fce42089"
     },
     "ruling-delivery-quality.json": {
       "kind": "adrf-ruling",
@@ -124,7 +124,7 @@
     }
   },
   "caseDocumentHashes": {
-    "case-duplicate-charge.json": "0x5ba4651aae1e5db74311f82e818ff93db678becfb696a02950a5929a57d59fe5",
+    "case-duplicate-charge.json": "0xf30468785a85b18d141dd67efc5493d2bed0788861a75450ba2448f479434df4",
     "case-delivery-quality.json": "0x5107682b71ff96e56aaf2048d1f544a96951b7b16ce04d8c594597d32bb31ce9",
     "case-version-commitment.json": "0xb5b92b936ee4047a4056390667ab19da11adfc06033d99d9fd365679c21ee4e5"
   }

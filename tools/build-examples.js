@@ -34,7 +34,8 @@ const ZERO32 = '0x' + '00'.repeat(32);
 const EFFECT_REFUND = L.id('adrf:effect/refund');
 const EFFECT_FEE_SPLIT = L.id('adrf:effect/fee-split');
 const STATUS_QUO = L.id('adrf:disposition/status-quo');
-const EVENT_SETTLEMENT = L.id('settlement');
+const EVENT_SETTLEMENT = L.id('settlement');                 // tag; the event of settlement n is keccak256(abi.encode(tag, n))
+const settlementEvent = (n) => L.keccak256(L.coder.encode(['bytes32', 'uint32'], [EVENT_SETTLEMENT, n]));
 const EVENT_DELIVERY = L.id('delivery');
 const TERMS = L.id('service terms v1');
 const ACDF_POLICY = L.id('acdf.vectors.policy');
@@ -150,12 +151,19 @@ const bindingDoc = {
   clockRules: {
     clock: 'mode=timestamp (the registry clock)',
     triggerEvents: [
-      { eventRef: EVENT_SETTLEMENT, label: 'settlement of the call (obligation: payment, kind limit)', obligationKind: 3 },
+      { eventRef: settlementEvent(2), label: 'settlement n of the call, n >= 2, eventRef = keccak256(abi.encode(keccak256("settlement"), n)) (obligation: payment, kind limit; each charge beyond the first is its own event); shown for n = 2', obligationKind: 3 },
       { eventRef: EVENT_DELIVERY, label: 'delivery of the call (obligation: delivery, kind result)', obligationKind: 1 },
     ],
-    adoptionDeadlineRule: 'eventAt + the call dispute period; a case is admitted only if that deadline is at least maxTotalDuration + enactmentMargin away',
+    adoptionDeadlineRule: 'eventAt + the call dispute period; each settlement is held by the escrow until then and only released funds can be withdrawn; a case is admitted only if that deadline is at least maxTotalDuration + enactmentMargin away',
   },
   noDecisionDisposition: { ref: STATUS_QUO, description: 'balances stay where the call left them' },
+  recognizedBreaches: [
+    { event: 'settlement n (n >= 2)', obligationKind: 3, proposition: 'the duplicate-settlement verifier\'s proposition for (this escrow, the call, n)', breachWhen: 'TRUE' },
+    { event: 'delivery', obligationKind: 1, proposition: 'the deliverable conforms to the acceptance criteria', breachWhen: 'FALSE' },
+    { event: 'delivery', obligationKind: 1, proposition: 'the service was actually performed', breachWhen: 'FALSE' },
+    { event: 'delivery', obligationKind: 1, proposition: 'the version actually used for the call matches the committed version', breachWhen: 'FALSE' },
+    { event: 'delivery', obligationKind: 1, proposition: 'the declared-version verifier\'s proposition for (this escrow, the call)', breachWhen: 'TRUE' },
+  ],
 };
 const TERMS_HASH = C.canonicalHash(bindingDoc);
 
@@ -163,11 +171,11 @@ const TERMS_HASH = C.canonicalHash(bindingDoc);
 const callId = 17;
 const object = { chainId: CHAIN, target: escrow, id: callId, versionHash: L.keccak256(L.coder.encode(['uint256', 'bytes32', 'bytes32'], [callId, TERMS, V2])) };
 const PROP_DUP = L.id('claim: the call was charged twice');
-const SQ_DUP = L.keccak256(L.coder.encode(['bytes32', 'address', 'uint256'], [L.id('adrf:prop/duplicate-settlement/v1'), escrow, callId]));
+const SQ_DUP = L.keccak256(L.coder.encode(['bytes32', 'address', 'uint256', 'uint32'], [L.id('adrf:prop/duplicate-settlement/v2'), escrow, callId, 2]));
 const dupCase = {
   kind: 'adrf-case', adrf: '0.1',
   object: { ref: object, description: 'service call 17 of the escrow, terms v1' },
-  event: { eventRef: EVENT_SETTLEMENT, description: 'the second settlement of call 17', eventAt: 1770007200 },
+  event: { eventRef: settlementEvent(2), description: 'the second settlement of call 17 (settlement event 2)', eventAt: 1770007200 },
   claim: { statement: 'Call 17 was charged twice.', proposition: PROP_DUP, decisive: 0, supportsWhen: 'TRUE' },
   rules: { normRef: TERMS, normDescription: 'service terms v1', clause: L.id('terms: at most one charge per call'), clauseText: 'at most one charge per call', obligationKind: { code: 3, label: 'limit' }, policyId: POLICY_ID },
   aiRelation: 'a billed inference request of a model API service',
@@ -180,8 +188,8 @@ const dupCase = {
   evidence: { scope: 'the settlement records of call 17 in the escrow', provision: 'on chain; nothing to provide', access: 'public state', verifiers: 'anyone, through the bound verifier', retention: 'permanent' },
   context: { committed: ['one charge per call (terms v1)'], declared: ['two settlements recorded by the escrow'], toEstablish: [], unverifiedPremises: ['the escrow records every settlement of call 17'] },
   participants: { judgment: [{ role: 'verifier', basis: 'bound by the policy for (limit, FORMAL)', account: verifier }], executors: [{ account: escrow, authority: 'holds the balances it moves' }] },
-  effects: { requested: [EFFECT_REFUND], onSustained: EFFECT_REFUND, onNotSustained: null, fallbackRef: STATUS_QUO, atMost: 'one charge of call 17, from the provider balance to the client balance' },
-  subQuestions: [{ index: 0, proposition: SQ_DUP, statement: 'The settlement count of call 17 in the escrow exceeds one.', qType: 'FORMAL', obligationKind: 3, inputs: 'abi.encode(uint256(17))', inputsHash: L.keccak256(L.coder.encode(['uint256'], [callId])), dependsOn: [] }],
+  effects: { requested: [EFFECT_REFUND], onSustained: EFFECT_REFUND, onNotSustained: null, fallbackRef: STATUS_QUO, atMost: 'the second settlement of call 17, held by the escrow, back to the client balance' },
+  subQuestions: [{ index: 0, proposition: SQ_DUP, statement: 'Settlement 2 of call 17 in the escrow exceeds the limit of one charge.', qType: 'FORMAL', obligationKind: 3, inputs: 'abi.encode(uint256(17), uint32(2))', inputsHash: L.keccak256(L.coder.encode(['uint256', 'uint32'], [callId, 2])), dependsOn: [] }],
 };
 dupCase.evidence.scopeHash = C.canonicalHash({ scope: dupCase.evidence.scope });
 
@@ -244,8 +252,8 @@ const ISSUE = L.registryId(CHAIN, acdf, 1);
 const findingDup = {
   kind: 'adrf-finding', adrf: '0.1', caseId: CASE_DUP, subQuestion: 0, round: 1,
   proposition: SQ_DUP, statement: dupCase.subQuestions[0].statement, value: 'TRUE',
-  method: { address: verifier, qType: 'FORMAL', version: 'DuplicateSettlementVerifier v0.1', params: spec.methods[0].params },
-  inputs: { description: 'abi.encode(uint256(17))', inputsHash: dupCase.subQuestions[0].inputsHash, resultHash: L.keccak256(L.coder.encode(['address', 'uint256', 'uint32'], [escrow, callId, 2])) },
+  method: { address: verifier, qType: 'FORMAL', version: 'DuplicateSettlementVerifier v0.2 (one proposition per settlement)', params: spec.methods[0].params },
+  inputs: { description: 'abi.encode(uint256(17), uint32(2))', inputsHash: dupCase.subQuestions[0].inputsHash, resultHash: L.keccak256(L.coder.encode(['address', 'uint256', 'uint32', 'uint32'], [escrow, callId, 2, 2])) },
   dependsOn: [], externalPremises: ['the ledger records every settlement of call 17'],
   acceptedBy: verifier, supportKinds: ['computed'], reason: 'NONE', at: 1770010800,
 };
@@ -284,7 +292,7 @@ const rulingDup = {
   decidedAt: 1770010800, finalAt: 1770183600, roundCount: 1, sourceRound: 1, adoptedFromEarlierRound: false, bySilence: false,
   supportKinds: ['computed'], allowedEffect: EFFECT_REFUND, fallbackRef: null,
   policyId: POLICY_ID, bindingId: L.registryId(CHAIN, registry, 1), source: escrow, proposition: PROP_DUP,
-  basis: 'Sub-question 0 (computed, by the settlement verifier over call 17): the settlement count exceeds one. Nothing about the quality of the service is decided.',
+  basis: 'Sub-question 0 (computed, by the settlement verifier over call 17): settlement 2 exists and exceeds the limit of one charge. Nothing about the quality of the service is decided, and nothing about a later settlement.',
 };
 const rulingQuality = {
   kind: 'adrf-ruling', adrf: '0.1', registry, chainId: CHAIN, caseId: CASE_QUALITY,

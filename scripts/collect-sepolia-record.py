@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """Collects the transaction record of the Sepolia evidence run from the Foundry broadcast files.
 
-    python3 scripts/collect-sepolia-record.py [--chain 11155111] [--out deployments/sepolia.transactions.json]
+    python3 scripts/collect-sepolia-record.py [--chain 11155111] [--out deployments/sepolia-rev4.transactions.json]
+                                              [--since <run-file timestamp>] [--all]
 
 Reads broadcast/SepoliaEvidence.s.sol/<chain>/run-<timestamp>.json in time order (one file per phase, in the
 order the phases were run), and writes one entry per transaction: phase, kind (CREATE or CALL), the contract
 created or the function called, sender, target, hash, block, status, gas used and effective gas price, plus the
-totals. The phase names are assigned in the order of the runbook when exactly seven run files are present;
-otherwise each file is labelled run-N and the names are left to the author of the record.
+totals. When the directory holds the files of an earlier run as well, the newest seven are taken (--since keeps
+only the files from that time on, --all keeps every file); the files used are listed. The phase names are
+assigned in the order of the runbook when exactly seven run files are selected; otherwise each file is labelled
+run-N and the names are left to the author of the record.
 """
 import argparse
 import glob
@@ -28,7 +31,9 @@ def hexint(v):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--chain", default="11155111")
-    ap.add_argument("--out", default=os.path.join("deployments", "sepolia.transactions.json"))
+    ap.add_argument("--out", default=os.path.join("deployments", "sepolia-rev4.transactions.json"))
+    ap.add_argument("--since", type=int, default=None, help="keep only the run files whose timestamp (the number in the file name) is at or after this one")
+    ap.add_argument("--all", action="store_true", help="keep every run file, however many")
     args = ap.parse_args()
 
     folder = os.path.join("broadcast", "SepoliaEvidence.s.sol", args.chain)
@@ -38,6 +43,15 @@ def main():
     )
     if not files:
         raise SystemExit(f"no run files under {folder}")
+    if args.since is not None:
+        files = [f for f in files if json.load(open(f)).get("timestamp", 0) >= args.since]
+    elif not args.all and len(files) > len(PHASES):
+        print(f"{len(files)} run files under {folder}: taking the newest {len(PHASES)} (use --since or --all to choose otherwise)")
+        files = files[-len(PHASES):]
+    if not files:
+        raise SystemExit("no run files selected")
+    for f in files:
+        print("  ", os.path.basename(f), "timestamp", json.load(open(f)).get("timestamp"))
     names = PHASES if len(files) == len(PHASES) else [f"run-{i + 1}" for i in range(len(files))]
 
     entries = []

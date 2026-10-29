@@ -275,14 +275,15 @@ contract SepoliaEvidence is Script {
         escrow.settle(callId); // the double charge
         vm.stopBroadcast();
 
-        T.ClaimInput memory c = baseClaim(escrow, callId, escrow.EVENT_SETTLEMENT(), keccak256("claim: the call was charged twice"),
+        // the event is the second settlement; the decisive sub-question is the verifier's proposition for it
+        T.ClaimInput memory c = baseClaim(escrow, callId, escrow.settlementEventRef(2), keccak256("claim: the call was charged twice"),
             keccak256("terms: at most one charge per call"), escrow.KIND_LIMIT(), T.Value.TRUE, provider);
         c.subQuestions = new T.SubQuestionInput[](1);
-        c.subQuestions[0] = sub(DuplicateSettlementVerifier(s.verifier).propositionFor(s.escrow, callId), T.QuestionType.FORMAL, escrow.KIND_LIMIT(), keccak256(abi.encode(callId)));
+        c.subQuestions[0] = sub(DuplicateSettlementVerifier(s.verifier).propositionFor(s.escrow, callId, 2), T.QuestionType.FORMAL, escrow.KIND_LIMIT(), keccak256(abi.encode(callId, uint32(2))));
 
         vm.startBroadcast(clientPk);
         bytes32 caseId = reg.file(s.bindingId, c);
-        reg.resolveFormal(caseId, 0, abi.encode(callId));
+        reg.resolveFormal(caseId, 0, abi.encode(callId, uint32(2)));
         reg.decide(caseId);
         vm.stopBroadcast();
 

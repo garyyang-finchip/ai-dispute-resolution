@@ -174,7 +174,7 @@ contract ADRFReviewTest is ADRFBase {
         // sq0: the call was charged twice (FORMAL); sq1: the service was performed (EVIDENCED), premised on sq0 == FALSE
         T.ClaimInput memory c = performanceClaim();
         c.subQuestions = new T.SubQuestionInput[](2);
-        c.subQuestions[0] = sub(verifier.propositionFor(address(escrow), callId), T.QuestionType.FORMAL, KIND_LIMIT, keccak256(abi.encode(callId)));
+        c.subQuestions[0] = sub(dupProposition(callId, 2), T.QuestionType.FORMAL, KIND_LIMIT, dupInputsHash(callId, 2));
         c.subQuestions[1] = sub(PROP_PERFORMED, T.QuestionType.EVIDENCED, KIND_RESULT, bytes32(0));
         c.subQuestions[1].dependsOn = new uint32[](1);
         c.subQuestions[1].dependsOn[0] = 0;
@@ -189,7 +189,7 @@ contract ADRFReviewTest is ADRFBase {
         vm.expectRevert(abi.encodeWithSelector(E.ADRF_DecisiveUnresolved.selector, caseId));
         reg.decide(caseId);
         // the premise resolves TRUE, the required value was FALSE: the dependent is UNDETERMINED without running its method
-        reg.resolveFormal(caseId, 0, abi.encode(callId));
+        reg.resolveFormal(caseId, 0, dupInputs(callId, 2));
         attestAll(caseId, 1, T.Value.FALSE, 2);
         reg.resolveEvidenced(caseId, 1, "");
         T.Finding memory f = reg.getFinding(caseId, 1);
@@ -206,7 +206,7 @@ contract ADRFReviewTest is ADRFBase {
     function test_dependencyTable_provenanceIsAUnionThatConfersNothing() public {
         T.ClaimInput memory c = performanceClaim();
         c.subQuestions = new T.SubQuestionInput[](2);
-        c.subQuestions[0] = sub(verifier.propositionFor(address(escrow), callId), T.QuestionType.FORMAL, KIND_LIMIT, keccak256(abi.encode(callId)));
+        c.subQuestions[0] = sub(dupProposition(callId, 2), T.QuestionType.FORMAL, KIND_LIMIT, dupInputsHash(callId, 2));
         c.subQuestions[1] = sub(PROP_PERFORMED, T.QuestionType.EVIDENCED, KIND_RESULT, bytes32(0));
         c.subQuestions[1].dependsOn = new uint32[](1);
         c.subQuestions[1].dependsOn[0] = 0;
@@ -214,7 +214,7 @@ contract ADRFReviewTest is ADRFBase {
         c.subQuestions[1].requiredValues[0] = T.Value.TRUE;
         c.decisive = 1;
         bytes32 caseId = fileAs(client, c);
-        reg.resolveFormal(caseId, 0, abi.encode(callId));
+        reg.resolveFormal(caseId, 0, dupInputs(callId, 2));
         attestAll(caseId, 1, T.Value.FALSE, 2);
         reg.resolveEvidenced(caseId, 1, "");
         // the derived finding keeps its own support kinds; the round cites the union as provenance only
@@ -230,7 +230,7 @@ contract ADRFReviewTest is ADRFBase {
         assertFalse(reg.getFinding(caseId, 1).resolved);
         // a review that targets only a sub-question the decisive one does not depend on is refused
         vm.warp(block.timestamp + 1);
-        reg.resolveFormal(caseId, 0, abi.encode(callId));
+        reg.resolveFormal(caseId, 0, dupInputs(callId, 2));
         reg.resolveEvidenced(caseId, 1, "");
         reg.decide(caseId);
         assertState(caseId, T.ProcedureState.Final); // reviews exhausted
@@ -240,7 +240,7 @@ contract ADRFReviewTest is ADRFBase {
         T.ClaimInput memory c = performanceClaim();
         c.subQuestions = new T.SubQuestionInput[](2);
         c.subQuestions[0] = sub(PROP_PERFORMED, T.QuestionType.EVIDENCED, KIND_RESULT, bytes32(0));
-        c.subQuestions[1] = sub(verifier.propositionFor(address(escrow), callId), T.QuestionType.FORMAL, KIND_LIMIT, keccak256(abi.encode(callId)));
+        c.subQuestions[1] = sub(dupProposition(callId, 2), T.QuestionType.FORMAL, KIND_LIMIT, dupInputsHash(callId, 2));
         c.decisive = 0;
         bytes32 caseId = fileAs(client, c);
         attestAll(caseId, 0, T.Value.FALSE, 2);

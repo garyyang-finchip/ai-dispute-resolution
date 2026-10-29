@@ -145,6 +145,6 @@ contract ADRFModulesTest is ADRFBase {
         vm.expectRevert(abi.encodeWithSelector(E.ADRF_WrongQuestionType.selector, uint32(0)));
         reg.openJudgment(caseId, 0);
         // return data of the record module, through the registry
-        assertEq(reg.activeCaseOf(reg.exclusivityKeyOf(address(escrow), reg.getCase(caseId).obligationRef, PROP_DUPLICATE_CLAIM)), caseId);
+        assertEq(reg.activeCaseOf(reg.exclusivityKeyOf(address(escrow), reg.getCase(caseId).obligationRef, dupProposition(callId, 2))), caseId);
     }
 }

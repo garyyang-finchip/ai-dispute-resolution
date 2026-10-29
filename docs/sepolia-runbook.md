@@ -1,6 +1,6 @@
 # Sepolia evidence runbook
 
-The run was executed on Sepolia on 2026-10-29 exactly as described here (Foundry 1.7.1 on the operator's machine; 46 transactions, all successful); its record is `docs/sepolia-evidence.md`.
+The run was executed on Sepolia on 2026-10-29 with the revision-3 contracts exactly as described here (Foundry 1.7.1 on the operator's machine; 46 transactions, all successful); its record is `docs/sepolia-evidence.md` with `deployments/sepolia.json`. The revision-4 contracts are run the same way; `RECORD` (default `sepolia-rev4`) names the record files of that run so that the revision-3 record stays as it is, and the record step takes the newest seven run files of the broadcast directory, so the files of the earlier run may stay there.
 
 The evidence run deploys the ADRF kernel (the policy registry, the six modules and the dispute registry), the three methods, the bridge over the live ERC-8436 reference registry on Sepolia, the worked-example escrow bound to a fast-track policy, and walks the two complete flows with real transactions. It is the same script that was rehearsed on Anvil (`docs/test-record.md`): `script/SepoliaEvidence.s.sol`, run phase by phase.
 
@@ -8,7 +8,7 @@ The evidence run deploys the ADRF kernel (the policy registry, the six modules a
 
 Two properties of Sepolia's current gas schedule decide how the run is executed; both were measured on the earlier runs of this standards family (ERC-8436 on 2026-10-09 and 2026-10-15, ERC-8468 on 2026-10-26 and 2026-10-27):
 
-- A transaction may use at most 16,777,216 gas (EIP-7825); `eth_estimateGas` and `eth_call` enforce the cap as well. Deployment cost grows by roughly 1,500 gas per byte of deployed code, so a contract above about 10,500 bytes of runtime code cannot be deployed at all. This is why revision 3 splits the dispute registry into a 2 KB router and six modules of at most 8,535 bytes; at the figure of the earlier runs the largest units of the kernel (`ADRFPolicyRegistry` 8,540 bytes, `ADRFDecisionModule` 8,535, `ADRFFilingModule` 8,483) extrapolate to about 13.5 million gas, 80% of the cap; the pre-flight below reads the live figure before anything is sent.
+- A transaction may use at most 16,777,216 gas (EIP-7825); `eth_estimateGas` and `eth_call` enforce the cap as well. Deployment cost grows by roughly 1,570 to 1,800 gas per byte of deployed code (as the revision-3 run measured), so a contract above about 10,500 bytes of runtime code cannot be deployed at all. This is why revision 3 splits the dispute registry into a 2 KB router and six modules of at most 8,784 bytes; the largest units (`ADRFServiceEscrow` 9,209 bytes in revision 4, `ADRFFilingModule` 8,784, `ADRFPolicyRegistry` 8,540, `ADRFDecisionModule` 8,535) extrapolate to 13.4 to 14.5 million gas, 80 to 87% of the cap; the pre-flight below reads the live figure before anything is sent.
 - The schedule prices state and code several times higher than the model of a local Foundry simulation (a plain transfer to an empty account costs 204,600 gas; the earlier runs saw five to seven times the local figure). A transaction sized by the local simulation runs out of gas on chain while the simulation passes. Every broadcast therefore takes its gas limits from the node: `--skip-simulation --gas-estimate-multiplier 150`. Unused gas is refunded, so the margin costs nothing.
 
 Base fees on Sepolia have been between a few wei and about 1.2 gwei in October. The whole run uses on the order of 100 million gas on this schedule: at tens of wei that is well under 0.001 ETH in fees; at 1 gwei it is about 0.1 ETH. The deployer also forwards 0.022 ETH to the derived actors, and the client deposits 0.006 ETH into the escrow (the refunds flow back to it). Fund the deployer with 0.05 ETH when the base fee is in the wei range and with 0.15 ETH when it is around 1 gwei.
@@ -22,8 +22,10 @@ export SEPOLIA_RPC_URL=https://...
 export PRIVATE_KEY=0x...
 bash scripts/sepolia-run.sh preflight
 bash scripts/sepolia-run.sh all          # about 40 minutes, most of it waiting
-bash scripts/sepolia-run.sh record       # deployments/sepolia.json, deployments/sepolia.transactions.json
+bash scripts/sepolia-run.sh record       # deployments/sepolia-rev4.json, deployments/sepolia-rev4.transactions.json
 ```
+
+`RECORD` names the record (default `sepolia-rev4`); `scripts/sepolia-readback.sh` and `scripts/sepolia-verify.sh` read the same name, so the whole revision-4 sequence is `preflight`, `all` (or the phases one by one), `record`, then `readback` and `verify` with no argument, and `RECORD=sepolia bash scripts/sepolia-readback.sh` reads the revision-3 record.
 
 The rest of this document is what the script does, for running it by hand or for reading the result.
 
@@ -54,7 +56,7 @@ cast estimate --rpc-url $SEPOLIA_RPC_URL --create $(forge inspect ADRFDecisionMo
 cast estimate --rpc-url $SEPOLIA_RPC_URL --create $(forge inspect ADRFFilingModule bytecode)$ARG
 ```
 
-Each figure must be below 16,777,216; expect about 13.5 million. If the node answers with an error instead of a number, the schedule has moved and the sizes have to be checked again before the run.
+Each figure must be below 16,777,216; expect 13.4 to 14.5 million (the script's pre-flight estimates the six largest creations, the escrow among them). If the node answers with an error instead of a number, the schedule has moved and the sizes have to be checked again before the run.
 
 ## Phases
 
@@ -86,10 +88,10 @@ If a phase stops before its last transaction, do not simply run it again: the st
 
 After the run, the record consists of:
 
-1. `deployments/11155111.json` copied to `deployments/sepolia.json` (every address and identifier of the run);
-2. the transaction list: hash, block, status, gas used and effective gas price of every transaction of every phase, collected from `broadcast/SepoliaEvidence.s.sol/11155111/*.json` by `scripts/collect-sepolia-record.py` into `deployments/sepolia.transactions.json`;
+1. `deployments/11155111.json` copied to `deployments/$RECORD.json` (every address and identifier of the run; `sepolia.json` for the revision-3 run, `sepolia-rev4.json` for the revision-4 run);
+2. the transaction list: hash, block, status, gas used and effective gas price of every transaction of every phase, collected from `broadcast/SepoliaEvidence.s.sol/11155111/*.json` by `scripts/collect-sepolia-record.py` into `deployments/$RECORD.transactions.json` (the newest seven run files when the directory also holds an earlier run's; `--since` and `--all` choose otherwise, and the files used are printed);
 3. the verification of the contracts on Sourcify from the standard JSON input (`forge verify-contract --verifier sourcify --chain 11155111 <address> <Contract>`, with `--constructor-args $(cast abi-encode "constructor(address)" <policyRegistry>)` for the six modules, the seven addresses for the dispute registry, the registry for the escrow and the registry and the ERC-8436 registry for the bridge);
-4. `docs/sepolia-evidence.md`: the phases, the addresses, the policy and binding identifiers, the two case identifiers, the ERC-8436 issue identifier, the rulings and enactment statuses read back from the registry, and the gas figures.
+4. the evidence document (`docs/sepolia-evidence.md` for revision 3, `docs/sepolia-evidence-rev4.md` for revision 4): the phases, the addresses, the policy and binding identifiers, the two case identifiers, the ERC-8436 issue identifier, the rulings and enactment statuses read back from the registry (`scripts/sepolia-readback.sh`, which in revision 4 also prints each settlement's state and the held value of each call), and the gas figures.
 
 The files under 1 and 2, together with the `broadcast` directory of the run, are enough to write 3 and 4 afterwards.
 
