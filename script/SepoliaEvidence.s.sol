@@ -185,7 +185,16 @@ contract SepoliaEvidence is Script {
         ap.appealMode = A.AppealMode.PRESERVE_UNLESS_OVERTURNED;
         ap.maxTotalDuration = 40 * MIN;
         ap.descriptorHash = keccak256("adrf evidence run: acdf fast-track policy");
-        s.acdfPolicyId = acdfPol.registerPolicy(ap);
+        // the policy is content-addressed: an earlier run of this script with the same deployer (and so the same
+        // derived jurors) has already registered it on a live registry, and the registry refuses a second
+        // registration of the same specification; the existing policy is the same policy, so it is reused
+        s.acdfPolicyId = acdfPol.policyIdOf(ap);
+        if (acdfPol.policyExists(s.acdfPolicyId)) {
+            console2.log("ERC-8436 policy already registered by an earlier run, reused:");
+            console2.logBytes32(s.acdfPolicyId);
+        } else {
+            s.acdfPolicyId = acdfPol.registerPolicy(ap);
+        }
 
         address[] memory attestors = new address[](3);
         attestors[0] = jurors[0]; attestors[1] = jurors[1]; attestors[2] = jurors[2];
