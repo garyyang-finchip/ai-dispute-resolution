@@ -1,6 +1,6 @@
 # Draft ERC: AI Dispute Resolution Framework (ADRF) — claims about bound objects, typed resolution, bounded rulings
 
-*Text of the Ethereum Magicians first post, posted as topic 30121 (https://ethereum-magicians.org/t/draft-erc-ai-dispute-resolution-framework-adrf-admitting-resolving-and-ruling-on-claims-about-bound-objects-within-pre-committed-authority/30121); the pull request is ethereum/ERCs#2123. The test count and the closing line below are the post-filing text (the first version of the post said 58 tests and carried a PR placeholder).*
+*Text of the Ethereum Magicians first post, posted as topic 30121 (now titled "ERC-8471: AI Dispute Resolution Framework (ADRF)", https://ethereum-magicians.org/t/erc-8471-ai-dispute-resolution-framework-adrf/30121); the pull request is ethereum/ERCs#2123. The test count and the closing line below are the post-filing text (the first version of the post said 58 tests and carried a PR placeholder).*
 
 ---
 

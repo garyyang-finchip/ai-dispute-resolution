@@ -1,8 +1,8 @@
-# AI Dispute Resolution Framework (ADRF)
+# ERC-8471: AI Dispute Resolution Framework (ADRF)
 
-Reference repository of the draft ERC **AI Dispute Resolution Framework (ADRF)**, for disputes about AI systems, resources and services and about the conduct, deliveries and declarations around them, between participants that may be people, organizations, agents or contracts: a dispute is a specific claim about a specific object — that an identified record, delivery, settlement, declaration or action does or does not conform to an obligation declared before the event — admitted under a pre-committed binding, resolved by typed methods and closed by a ruling whose effects are limited to what the binding authorized. What a dispute is about (which model, service, output, dataset, evaluation or promise) and how it is resolved (verifier, evidence, human or AI-assisted judgment, or a composition) are kept apart; nothing requires that AI be judged by AI, and nothing requires that a participant be an agent.
+Reference repository of **ERC-8471, AI Dispute Resolution Framework (ADRF)** (Draft), for disputes about AI systems, resources and services and about the conduct, deliveries and declarations around them, between participants that may be people, organizations, agents or contracts: a dispute is a specific claim about a specific object — that an identified record, delivery, settlement, declaration or action does or does not conform to an obligation declared before the event — admitted under a pre-committed binding, resolved by typed methods and closed by a ruling whose effects are limited to what the binding authorized. What a dispute is about (which model, service, output, dataset, evaluation or promise) and how it is resolved (verifier, evidence, human or AI-assisted judgment, or a composition) are kept apart; nothing requires that AI be judged by AI, and nothing requires that a participant be an agent.
 
-Status: Draft. Discussion thread: [Draft ERC: AI Dispute Resolution Framework (ADRF)](https://ethereum-magicians.org/t/draft-erc-ai-dispute-resolution-framework-adrf-admitting-resolving-and-ruling-on-claims-about-bound-objects-within-pre-committed-authority/30121) on Ethereum Magicians; pull request: [ethereum/ERCs#2123](https://github.com/ethereum/ERCs/pull/2123). The ERC text carries the placeholder number 9999 until an editor assigns one on that pull request (then `scripts/make-filing-package.py --number N` renames the package). This repository holds revision 2 (v0.2, the generalization from agent disputes to AI disputes): reference implementation, schemas, vectors, worked examples, a 64-test Foundry suite that runs the two complete flows against the vendored ERC-8436 reference registry, and an evidence script rehearsed end to end on Anvil.
+Status: Draft. ERC-8471 was assigned on 2026-10-29 in [ethereum/ERCs#2123](https://github.com/ethereum/ERCs/pull/2123) (filed on 2026-10-28 under the placeholder number 9999); discussion thread: [ERC-8471: AI Dispute Resolution Framework (ADRF)](https://ethereum-magicians.org/t/erc-8471-ai-dispute-resolution-framework-adrf/30121) on Ethereum Magicians. This repository holds revision 2 (v0.2, the generalization from agent disputes to AI disputes): reference implementation, schemas, vectors, worked examples, a 64-test Foundry suite that runs the two complete flows against the vendored ERC-8436 reference registry, and an evidence script rehearsed end to end on Anvil.
 
 ## What it is
 
@@ -20,7 +20,7 @@ Economic mechanisms are declared, not designed: the policy document states what 
 ## Repository
 
 ```
-ERCS/erc-adrf.md                     ERC text (source; the filing package renames it erc-<number>.md)
+ERCS/erc-adrf.md                     ERC text (source; the filing package names it erc-8471.md)
 assets/erc-adrf/
   contracts/                         ADRFPolicyRegistry, ADRFDisputeRegistry, ADRFTypes, ADRFErrors,
                                      interfaces/ (incl. the vendored ERC-8436 interfaces under interfaces/acdf),
@@ -54,7 +54,7 @@ forge build
 forge test
 npm run check          # rebuild the examples, regenerate the vectors, validate the examples against the schemas
 npm run lint:erc       # eipw lint of the ERC text (spelling findings are listed, not gating)
-python3 scripts/make-filing-package.py                 # --number and --discussions-to override the placeholders
+python3 scripts/make-filing-package.py                 # --number and --discussions-to override the defaults (8471, the thread URL)
 ```
 
 `forge build --sizes` reports every ADRF contract under the EIP-170 limit; the only contract above it is the vendored ERC-8436 reference registry used as a test fixture, which this repository compiles with optimizer runs 200 (its own repository compiles it with runs 1). `foundry.toml` raises the test EVM's code size limit for that fixture only.

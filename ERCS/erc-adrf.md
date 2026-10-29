@@ -1,9 +1,9 @@
 ---
-eip: 9999
+eip: 8471
 title: AI Dispute Resolution Framework (ADRF)
 description: Registries that admit, resolve and rule on claims about bound objects within pre-committed authority and bounded procedure
 author: Gary Yang (@garyyang-finchip)
-discussions-to: https://ethereum-magicians.org/t/draft-erc-ai-dispute-resolution-framework-adrf-admitting-resolving-and-ruling-on-claims-about-bound-objects-within-pre-committed-authority/30121
+discussions-to: https://ethereum-magicians.org/t/erc-8471-ai-dispute-resolution-framework-adrf/30121
 status: Draft
 type: Standards Track
 category: ERC

@@ -3,7 +3,7 @@
 // Lints the ERC text with eipw (the validator used by the ethereum/ERCs repository) in a scratch directory
 // that mirrors the repository layout: ERCS/eip-<number>.md next to stub files for the proposals it links to.
 //
-//   node tools/lint-erc.js [--number 9999] [--source ERCS/erc-adrf.md]
+//   node tools/lint-erc.js [--number 8471] [--source ERCS/erc-adrf.md]
 
 const fs = require('fs');
 const os = require('os');
@@ -12,7 +12,7 @@ const eipw = require('eipw-lint-js');
 
 const args = process.argv.slice(2);
 const arg = (n, d) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : d; };
-const NUMBER = arg('--number', '9999');
+const NUMBER = arg('--number', '8471');
 const SOURCE = path.resolve(arg('--source', path.join(__dirname, '..', 'ERCS', 'erc-adrf.md')));
 
 // Statuses of linked proposals (as published), used to satisfy the status lints offline.
