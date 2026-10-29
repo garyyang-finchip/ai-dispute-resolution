@@ -2,7 +2,7 @@
 
 Reference repository of **ERC-8471, AI Dispute Resolution Framework (ADRF)** (Draft), for disputes about AI systems, resources and services and about the conduct, deliveries and declarations around them, between participants that may be people, organizations, agents or contracts: a dispute is a specific claim about a specific object — that an identified record, delivery, settlement, declaration or action does or does not conform to an obligation declared before the event — admitted under a pre-committed binding, resolved by typed methods and closed by a ruling whose effects are limited to what the binding authorized. What a dispute is about (which model, service, output, dataset, evaluation or promise) and how it is resolved (verifier, evidence, human or AI-assisted judgment, or a composition) are kept apart; nothing requires that AI be judged by AI, and nothing requires that a participant be an agent.
 
-Status: Draft. ERC-8471 was assigned on 2026-10-29 in [ethereum/ERCs#2123](https://github.com/ethereum/ERCs/pull/2123) (filed on 2026-10-28 under the placeholder number 9999); discussion thread: [ERC-8471: AI Dispute Resolution Framework (ADRF)](https://ethereum-magicians.org/t/erc-8471-ai-dispute-resolution-framework-adrf/30121) on Ethereum Magicians. This repository holds revision 2 (v0.2, the generalization from agent disputes to AI disputes): reference implementation, schemas, vectors, worked examples, a 64-test Foundry suite that runs the two complete flows against the vendored ERC-8436 reference registry, and an evidence script rehearsed end to end on Anvil.
+Status: Draft. ERC-8471 was assigned on 2026-10-29 in [ethereum/ERCs#2123](https://github.com/ethereum/ERCs/pull/2123) (filed on 2026-10-28 under the placeholder number 9999); discussion thread: [ERC-8471: AI Dispute Resolution Framework (ADRF)](https://ethereum-magicians.org/t/erc-8471-ai-dispute-resolution-framework-adrf/30121) on Ethereum Magicians. This repository holds revision 3 (v0.3: the dispute registry as one address over six modules, so that every deployable unit stays within the per-transaction gas limit of Sepolia and of the networks that follow it; revision 2 was the generalization from agent disputes to AI disputes): reference implementation, schemas, vectors, worked examples, a 70-test Foundry suite that runs the two complete flows against the vendored ERC-8436 reference registry, and an evidence script rehearsed end to end on Anvil.
 
 ## What it is
 
@@ -24,8 +24,9 @@ ERCS/erc-adrf.md                     ERC text (source; the filing package names 
 assets/erc-adrf/
   contracts/                         ADRFPolicyRegistry, ADRFDisputeRegistry, ADRFTypes, ADRFErrors,
                                      interfaces/ (incl. the vendored ERC-8436 interfaces under interfaces/acdf),
-                                     libraries/ (ADRFStore; ADRFAdmission and ADRFLifecycle: the registry's
-                                     admission and lifecycle as externally linked libraries),
+                                     libraries/ADRFStore (the storage record),
+                                     modules/ (ADRFModule base; the six modules the registry runs by delegatecall
+                                     on its own storage: Binding, Filing, Resolution, Decision, Record, Outcome),
                                      bridges/ADRFACDFBridge (the J-profile method),
                                      examples/ (DuplicateSettlementVerifier, DeclaredVersionVerifier, AttestorQuorumRule,
                                      ADRFServiceEscrow: a model API service escrow between plain accounts)
@@ -34,15 +35,15 @@ assets/erc-adrf/
   examples/                          the model-API-service policy and binding, three cases (double charge, delivery
                                      quality, version commitment), four findings, three rulings, one enactment
                                      report, manifest.json with the content hashes
-test/                                Foundry suite (64 tests): the two complete flows, admission, reviews and
+test/                                Foundry suite (70 tests): the two complete flows, admission, reviews and
                                      timeouts, the optimistic track, the policy registry, the generalization
-                                     scenarios (plain accounts, committed / declared / actual version),
-                                     ethers <-> solc vectors;
+                                     scenarios (plain accounts, committed / declared / actual version), the
+                                     registry modules (routing, storage, logs, refusals), ethers <-> solc vectors;
                                      test/vendor/acdf holds the vendored ERC-8436 reference as a fixture
 tools/                               build-examples.js, vectors.js, validate.js, lint-erc.js, lib/
 script/SepoliaEvidence.s.sol         evidence run (deploy, formal flow, judged flow) in phases
 scripts/make-filing-package.py       builds ercs-pr-package/ for the ethereum/ERCs pull request
-docs/                                design memo, Magicians post draft, test record, evidence runbook
+docs/                                design memo, Magicians post and revision notes, test record, evidence runbook
 deployments/                         evidence records (none yet; the Anvil rehearsal writes 31337.json, ignored)
 ```
 
@@ -57,11 +58,13 @@ npm run lint:erc       # eipw lint of the ERC text (spelling findings are listed
 python3 scripts/make-filing-package.py                 # --number and --discussions-to override the defaults (8471, the thread URL)
 ```
 
-`forge build --sizes` reports every ADRF contract under the EIP-170 limit; the only contract above it is the vendored ERC-8436 reference registry used as a test fixture, which this repository compiles with optimizer runs 200 (its own repository compiles it with runs 1). `foundry.toml` raises the test EVM's code size limit for that fixture only.
+`forge build --sizes` reports every ADRF contract under 8,600 bytes of runtime code: the dispute registry (about 2 KB) routes each function of its interface to one of six modules by delegatecall on its own storage, with the original calldata and sender, so that no deployable unit of the kernel approaches the per-transaction gas limit of 16,777,216 (EIP-7825) under Sepolia's current gas schedule, which prices code at roughly 1,500 gas per deployed byte. The only contract above the EIP-170 size limit is the vendored ERC-8436 reference registry used as a test fixture, which this repository compiles with optimizer runs 200 (its own repository compiles it with runs 1); `foundry.toml` raises the test EVM's code size limit for that fixture only.
+
+Deploying the kernel means deploying the policy registry, the six modules (each takes the policy registry's address) and then the dispute registry with the policy registry and the six module addresses; `script/SepoliaEvidence.s.sol` and `test/ADRFBase.t.sol` show the order. The modules are fixed at construction, refuse to run on their own storage and must have been built for the same policy registry.
 
 ## Evidence run
 
-`script/SepoliaEvidence.s.sol` deploys the registries, the methods, the bridge over a live ERC-8436 registry (`ACDF_REGISTRY`; on Anvil it deploys the vendored reference), the worked-example escrow bound to a fast-track policy, and walks the two complete flows with real transactions in phases (`PHASE=deploy | formal-file | formal-finalize | judged-file | judged-vote | judged-finalize | judged-close`). The rehearsal on Anvil ran all seven phases successfully; the Sepolia run follows the runbook in `docs/sepolia-runbook.md`.
+`script/SepoliaEvidence.s.sol` deploys the registries (the dispute registry with its six modules), the methods, the bridge over a live ERC-8436 registry (`ACDF_REGISTRY`; on Anvil it deploys the vendored reference), the worked-example escrow bound to a fast-track policy, and walks the two complete flows with real transactions in phases (`PHASE=deploy | formal-file | formal-finalize | judged-file | judged-vote | judged-finalize | judged-close`). The rehearsal on Anvil ran all seven phases successfully; the Sepolia run follows the runbook in `docs/sepolia-runbook.md`.
 
 ## Objects in scope
 
@@ -69,7 +72,7 @@ The first draft covers five open categories of objects: AI resources (a model ve
 
 ## Design memo and discussion
 
-`docs/design-memo.md` carries the consolidated design: the five admission criteria, the claim direction, support kinds as a set, the dependency table, the four dimensions, the adoption rule, effects in three layers, the J-profile's exact use of ERC-8436, the nine-standard coverage map, the walkthrough of the five scenarios and the reserved extensions. `docs/magicians-post.md` is the draft of the discussion thread.
+`docs/design-memo.md` carries the consolidated design: the five admission criteria, the claim direction, support kinds as a set, the dependency table, the four dimensions, the adoption rule, effects in three layers, the J-profile's exact use of ERC-8436, the nine-standard coverage map, the walkthrough of the five scenarios and the reserved extensions. `docs/magicians-post.md` is the text of the discussion thread's first post; `docs/magicians-revision-3.md` is the revision-3 note.
 
 ## License
 

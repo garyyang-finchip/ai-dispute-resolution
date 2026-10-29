@@ -14,6 +14,6 @@ A dispute is a specific claim about a specific object — that an identified rec
 
 Discussion: https://ethereum-magicians.org/t/erc-8471-ai-dispute-resolution-framework-adrf/30121
 
-Reference implementation, schemas, vectors, worked examples and the test suite (64 Foundry tests, including the two complete flows against the vendored ERC-8436 reference registry) are in the assets and in the companion repository: https://github.com/garyyang-finchip/ai-dispute-resolution
+Reference implementation, schemas, vectors, worked examples and the test suite (70 Foundry tests, including the two complete flows against the vendored ERC-8436 reference registry) are in the assets and in the companion repository: https://github.com/garyyang-finchip/ai-dispute-resolution
 
-Filed under the placeholder number 9999; renamed to ERC-8471 when the number was assigned.
+Filed under the placeholder number 9999; renamed to ERC-8471 when the number was assigned. Revision 3 (2026-10-29) restructures the reference dispute registry into one router over six modules so that every deployable unit stays within the 16,777,216-gas per-transaction cap of Sepolia; interfaces, identifiers and vectors are unchanged.

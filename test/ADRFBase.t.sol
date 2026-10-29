@@ -6,6 +6,12 @@ import {ADRFTypes as T} from "adrf/ADRFTypes.sol";
 import {ADRFErrors as E} from "adrf/ADRFErrors.sol";
 import {ADRFPolicyRegistry} from "adrf/ADRFPolicyRegistry.sol";
 import {ADRFDisputeRegistry} from "adrf/ADRFDisputeRegistry.sol";
+import {ADRFBindingModule} from "adrf/modules/ADRFBindingModule.sol";
+import {ADRFFilingModule} from "adrf/modules/ADRFFilingModule.sol";
+import {ADRFResolutionModule} from "adrf/modules/ADRFResolutionModule.sol";
+import {ADRFDecisionModule} from "adrf/modules/ADRFDecisionModule.sol";
+import {ADRFRecordModule} from "adrf/modules/ADRFRecordModule.sol";
+import {ADRFOutcomeModule} from "adrf/modules/ADRFOutcomeModule.sol";
 import {IADRFPolicyRegistry} from "adrf/interfaces/IADRFPolicyRegistry.sol";
 import {IADRFDisputeRegistry} from "adrf/interfaces/IADRFDisputeRegistry.sol";
 import {ADRFACDFBridge} from "adrf/bridges/ADRFACDFBridge.sol";
@@ -26,7 +32,8 @@ abstract contract ADRFBase is Test {
     uint256 internal constant START = 1_770_000_000;
 
     ADRFPolicyRegistry pol;
-    ADRFDisputeRegistry reg;
+    IADRFDisputeRegistry reg;          // the registry, seen through the interface it exposes at one address
+    ADRFDisputeRegistry registry;      // the same contract, for its own reads (modules, routing)
     ACDFPolicyRegistry acdfPol;
     ACDFRegistry acdf;
     ADRFACDFBridge bridge;
@@ -73,7 +80,16 @@ abstract contract ADRFBase is Test {
     function setUp() public virtual {
         vm.warp(START);
         pol = new ADRFPolicyRegistry();
-        reg = new ADRFDisputeRegistry(pol);
+        registry = new ADRFDisputeRegistry(
+            pol,
+            address(new ADRFBindingModule(pol)),
+            address(new ADRFFilingModule(pol)),
+            address(new ADRFResolutionModule(pol)),
+            address(new ADRFDecisionModule(pol)),
+            address(new ADRFRecordModule(pol)),
+            address(new ADRFOutcomeModule(pol))
+        );
+        reg = IADRFDisputeRegistry(address(registry));
         acdfPol = new ACDFPolicyRegistry();
         acdf = new ACDFRegistry(acdfPol);
         bridge = new ADRFACDFBridge(reg, IACDFRegistryBridge(address(acdf)));

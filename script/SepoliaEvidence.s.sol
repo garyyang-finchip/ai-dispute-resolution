@@ -5,6 +5,13 @@ import {Script, console2} from "forge-std/Script.sol";
 import {ADRFTypes as T} from "adrf/ADRFTypes.sol";
 import {ADRFPolicyRegistry} from "adrf/ADRFPolicyRegistry.sol";
 import {ADRFDisputeRegistry} from "adrf/ADRFDisputeRegistry.sol";
+import {IADRFDisputeRegistry} from "adrf/interfaces/IADRFDisputeRegistry.sol";
+import {ADRFBindingModule} from "adrf/modules/ADRFBindingModule.sol";
+import {ADRFFilingModule} from "adrf/modules/ADRFFilingModule.sol";
+import {ADRFResolutionModule} from "adrf/modules/ADRFResolutionModule.sol";
+import {ADRFDecisionModule} from "adrf/modules/ADRFDecisionModule.sol";
+import {ADRFRecordModule} from "adrf/modules/ADRFRecordModule.sol";
+import {ADRFOutcomeModule} from "adrf/modules/ADRFOutcomeModule.sol";
 import {ADRFACDFBridge} from "adrf/bridges/ADRFACDFBridge.sol";
 import {DuplicateSettlementVerifier} from "adrf/examples/DuplicateSettlementVerifier.sol";
 import {DeclaredVersionVerifier} from "adrf/examples/DeclaredVersionVerifier.sol";
@@ -16,7 +23,7 @@ import {ACDFTypes as A} from "adrf/interfaces/acdf/ACDFTypes.sol";
 import {ACDFPolicyRegistry as LocalACDFPolicyRegistry} from "acdf/ACDFPolicyRegistry.sol";
 import {ACDFRegistry as LocalACDFRegistry} from "acdf/ACDFRegistry.sol";
 
-/// Evidence run: deploys the registries, the methods, the bridge over a live ERC-8436 registry (or a local one
+/// Evidence run: deploys the registries (the dispute registry with its six modules), the methods, the bridge over a live ERC-8436 registry (or a local one
 /// on Anvil), the worked-example escrow bound to a fast-track policy, and walks the two complete flows with
 /// real transactions. Phases (env PHASE): deploy | formal-file | formal-finalize | judged-file | judged-vote |
 /// judged-finalize. State is kept in deployments/<chainId>.json. Keys: PRIVATE_KEY (deployer); the client,
@@ -28,7 +35,7 @@ import {ACDFRegistry as LocalACDFRegistry} from "acdf/ACDFRegistry.sol";
 ///   ... then the other phases, warping Anvil's clock (evm_increaseTime) between them.
 contract SepoliaEvidence is Script {
     struct State {
-        address policies; address registry; address verifier; address versionVerifier; address rule; address bridge; address escrow;
+        address policies; address registry; address bindingModule; address filingModule; address resolutionModule; address decisionModule; address recordModule; address outcomeModule; address verifier; address versionVerifier; address rule; address bridge; address escrow;
         address acdfRegistry; address acdfPolicies; bytes32 acdfPolicyId; bytes32 panelId; bytes32 policyId; bytes32 bindingId;
         uint256 callFormal; bytes32 caseFormal; uint256 callJudged; bytes32 caseJudged; bytes32 issueJudged;
     }
@@ -62,6 +69,12 @@ contract SepoliaEvidence is Script {
         string memory j = vm.readFile(statePath());
         s.policies = vm.parseJsonAddress(j, ".policies");
         s.registry = vm.parseJsonAddress(j, ".registry");
+        s.bindingModule = vm.parseJsonAddress(j, ".bindingModule");
+        s.filingModule = vm.parseJsonAddress(j, ".filingModule");
+        s.resolutionModule = vm.parseJsonAddress(j, ".resolutionModule");
+        s.decisionModule = vm.parseJsonAddress(j, ".decisionModule");
+        s.recordModule = vm.parseJsonAddress(j, ".recordModule");
+        s.outcomeModule = vm.parseJsonAddress(j, ".outcomeModule");
         s.verifier = vm.parseJsonAddress(j, ".verifier");
         s.versionVerifier = vm.parseJsonAddress(j, ".versionVerifier");
         s.rule = vm.parseJsonAddress(j, ".rule");
@@ -84,6 +97,12 @@ contract SepoliaEvidence is Script {
         string memory o = "state";
         vm.serializeAddress(o, "policies", s.policies);
         vm.serializeAddress(o, "registry", s.registry);
+        vm.serializeAddress(o, "bindingModule", s.bindingModule);
+        vm.serializeAddress(o, "filingModule", s.filingModule);
+        vm.serializeAddress(o, "resolutionModule", s.resolutionModule);
+        vm.serializeAddress(o, "decisionModule", s.decisionModule);
+        vm.serializeAddress(o, "recordModule", s.recordModule);
+        vm.serializeAddress(o, "outcomeModule", s.outcomeModule);
         vm.serializeAddress(o, "verifier", s.verifier);
         vm.serializeAddress(o, "versionVerifier", s.versionVerifier);
         vm.serializeAddress(o, "rule", s.rule);
@@ -115,7 +134,15 @@ contract SepoliaEvidence is Script {
 
         vm.startBroadcast(pk);
         ADRFPolicyRegistry pol = new ADRFPolicyRegistry();
-        ADRFDisputeRegistry reg = new ADRFDisputeRegistry(pol);
+        ADRFBindingModule binding = new ADRFBindingModule(pol);
+        ADRFFilingModule filing = new ADRFFilingModule(pol);
+        ADRFResolutionModule resolution = new ADRFResolutionModule(pol);
+        ADRFDecisionModule decision = new ADRFDecisionModule(pol);
+        ADRFRecordModule record = new ADRFRecordModule(pol);
+        ADRFOutcomeModule outcome = new ADRFOutcomeModule(pol);
+        IADRFDisputeRegistry reg = IADRFDisputeRegistry(address(
+            new ADRFDisputeRegistry(pol, address(binding), address(filing), address(resolution), address(decision), address(record), address(outcome))
+        ));
         DuplicateSettlementVerifier verifier = new DuplicateSettlementVerifier();
         DeclaredVersionVerifier versionVerifier = new DeclaredVersionVerifier();
         AttestorQuorumRule rule = new AttestorQuorumRule();
@@ -208,7 +235,8 @@ contract SepoliaEvidence is Script {
         for (uint256 i = 0; i < 3; i++) payable(jurors[i]).transfer(0.002 ether);
         vm.stopBroadcast();
 
-        s.policies = address(pol); s.registry = address(reg); s.verifier = address(verifier); s.versionVerifier = address(versionVerifier); s.rule = address(rule);
+        s.policies = address(pol); s.registry = address(reg); s.verifier = address(verifier);
+        s.bindingModule = address(binding); s.filingModule = address(filing); s.resolutionModule = address(resolution); s.decisionModule = address(decision); s.recordModule = address(record); s.outcomeModule = address(outcome); s.versionVerifier = address(versionVerifier); s.rule = address(rule);
         s.bridge = address(bridge); s.escrow = address(escrow); s.acdfRegistry = address(acdf); s.acdfPolicies = address(acdfPol);
         save(s);
         console2.log("deployed; registry", address(reg));
@@ -227,7 +255,7 @@ contract SepoliaEvidence is Script {
     function formalFile(uint256 pk) internal {
         State memory s = load();
         ADRFServiceEscrow escrow = ADRFServiceEscrow(payable(s.escrow));
-        ADRFDisputeRegistry reg = ADRFDisputeRegistry(s.registry);
+        IADRFDisputeRegistry reg = IADRFDisputeRegistry(s.registry);
         uint256 clientPk = derived(pk, "client");
         uint256 providerPk = derived(pk, "provider");
         address provider = vm.addr(providerPk);
@@ -263,7 +291,7 @@ contract SepoliaEvidence is Script {
 
     function formalFinalize(uint256 pk) internal {
         State memory s = load();
-        ADRFDisputeRegistry reg = ADRFDisputeRegistry(s.registry);
+        IADRFDisputeRegistry reg = IADRFDisputeRegistry(s.registry);
         ADRFServiceEscrow escrow = ADRFServiceEscrow(payable(s.escrow));
         vm.startBroadcast(pk);
         reg.finalize(s.caseFormal);
@@ -279,7 +307,7 @@ contract SepoliaEvidence is Script {
     function judgedFile(uint256 pk) internal {
         State memory s = load();
         ADRFServiceEscrow escrow = ADRFServiceEscrow(payable(s.escrow));
-        ADRFDisputeRegistry reg = ADRFDisputeRegistry(s.registry);
+        IADRFDisputeRegistry reg = IADRFDisputeRegistry(s.registry);
         uint256 clientPk = derived(pk, "client");
         uint256 providerPk = derived(pk, "provider");
         address provider = vm.addr(providerPk);
@@ -328,7 +356,7 @@ contract SepoliaEvidence is Script {
     function judgedFinalize(uint256 pk) internal {
         State memory s = load();
         IACDFRegistry acdf = IACDFRegistry(s.acdfRegistry);
-        ADRFDisputeRegistry reg = ADRFDisputeRegistry(s.registry);
+        IADRFDisputeRegistry reg = IADRFDisputeRegistry(s.registry);
         vm.startBroadcast(pk);
         acdf.finalize(s.issueJudged);
         ADRFACDFBridge(s.bridge).importResult(s.caseJudged, 0);
@@ -341,7 +369,7 @@ contract SepoliaEvidence is Script {
 
     function judgedClose(uint256 pk) internal {
         State memory s = load();
-        ADRFDisputeRegistry reg = ADRFDisputeRegistry(s.registry);
+        IADRFDisputeRegistry reg = IADRFDisputeRegistry(s.registry);
         ADRFServiceEscrow escrow = ADRFServiceEscrow(payable(s.escrow));
         vm.startBroadcast(pk);
         reg.finalize(s.caseJudged);
