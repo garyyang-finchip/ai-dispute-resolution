@@ -43,6 +43,8 @@ test/                                Foundry suite (70 tests): the two complete 
 tools/                               build-examples.js, vectors.js, validate.js, lint-erc.js, lib/
 script/SepoliaEvidence.s.sol         evidence run (deploy, formal flow, judged flow) in phases
 scripts/make-filing-package.py       builds ercs-pr-package/ for the ethereum/ERCs pull request
+scripts/sepolia-run.sh               drives the Sepolia evidence run (pre-flight, the seven phases, the record);
+                                     collect-sepolia-record.py assembles the transaction record from the broadcast files
 docs/                                design memo, Magicians post and revision notes, test record, evidence runbook
 deployments/                         evidence records (none yet; the Anvil rehearsal writes 31337.json, ignored)
 ```
@@ -56,6 +58,7 @@ forge test
 npm run check          # rebuild the examples, regenerate the vectors, validate the examples against the schemas
 npm run lint:erc       # eipw lint of the ERC text (spelling findings are listed, not gating)
 python3 scripts/make-filing-package.py                 # --number and --discussions-to override the defaults (8471, the thread URL)
+scripts/sepolia-run.sh preflight | all | record         # the Sepolia evidence run, driven end to end (docs/sepolia-runbook.md)
 ```
 
 `forge build --sizes` reports every ADRF contract under 8,600 bytes of runtime code: the dispute registry (about 2 KB) routes each function of its interface to one of six modules by delegatecall on its own storage, with the original calldata and sender, so that no deployable unit of the kernel approaches the per-transaction gas limit of 16,777,216 (EIP-7825) under Sepolia's current gas schedule, which prices code at roughly 1,500 gas per deployed byte. The only contract above the EIP-170 size limit is the vendored ERC-8436 reference registry used as a test fixture, which this repository compiles with optimizer runs 200 (its own repository compiles it with runs 1); `foundry.toml` raises the test EVM's code size limit for that fixture only.

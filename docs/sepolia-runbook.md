@@ -11,6 +11,20 @@ Two properties of Sepolia's current gas schedule decide how the run is executed;
 
 Base fees on Sepolia have been between a few wei and about 1.2 gwei in October. The whole run uses on the order of 100 million gas on this schedule: at tens of wei that is well under 0.001 ETH in fees; at 1 gwei it is about 0.1 ETH. The deployer also forwards 0.022 ETH to the derived actors, and the client deposits 0.006 ETH into the escrow (the refunds flow back to it). Fund the deployer with 0.05 ETH when the base fee is in the wei range and with 0.15 ETH when it is around 1 gwei.
 
+## One-command run
+
+`scripts/sepolia-run.sh` drives everything below with the two environment variables as its only inputs: `preflight` runs the checks of the next two sections, `all` runs the seven phases in order and waits eleven minutes where a window must lapse, and `record` writes the two record files; a single phase name runs that phase alone. It needs Foundry (`forge`, `cast`) and `python3` on the machine that holds the key, and nothing else.
+
+```
+export SEPOLIA_RPC_URL=https://...
+export PRIVATE_KEY=0x...
+scripts/sepolia-run.sh preflight
+scripts/sepolia-run.sh all          # about 40 minutes, most of it waiting
+scripts/sepolia-run.sh record       # deployments/sepolia.json, deployments/sepolia.transactions.json
+```
+
+The rest of this document is what the script does, for running it by hand or for reading the result.
+
 ## Inputs
 
 - `PRIVATE_KEY`: the deployer. It funds the derived actors (client 0.012 ETH, provider 0.004 ETH, three jurors 0.002 ETH each) in the deploy phase and pays the deployment gas. The client, the provider and the three jurors are derived from it inside the script and need no key of their own.
@@ -71,7 +85,7 @@ If a phase stops before its last transaction, do not simply run it again: the st
 After the run, the record consists of:
 
 1. `deployments/11155111.json` copied to `deployments/sepolia.json` (every address and identifier of the run);
-2. the transaction list: hash, block, status, gas used and effective gas price of every transaction of every phase, from `broadcast/SepoliaEvidence.s.sol/11155111/*.json`, written to `deployments/sepolia.transactions.json`;
+2. the transaction list: hash, block, status, gas used and effective gas price of every transaction of every phase, collected from `broadcast/SepoliaEvidence.s.sol/11155111/*.json` by `scripts/collect-sepolia-record.py` into `deployments/sepolia.transactions.json`;
 3. the verification of the contracts on Sourcify from the standard JSON input (`forge verify-contract --verifier sourcify --chain 11155111 <address> <Contract>`, with `--constructor-args $(cast abi-encode "constructor(address)" <policyRegistry>)` for the six modules, the seven addresses for the dispute registry, the registry for the escrow and the registry and the ERC-8436 registry for the bridge);
 4. `docs/sepolia-evidence.md`: the phases, the addresses, the policy and binding identifiers, the two case identifiers, the ERC-8436 issue identifier, the rulings and enactment statuses read back from the registry, and the gas figures.
 
