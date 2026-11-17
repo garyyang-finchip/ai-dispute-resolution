@@ -113,6 +113,10 @@ contract ADRFGeneralizationTest is ADRFBase {
         bytes32 caseId = fileAs(client, versionClaim(id));
         reg.resolveFormal(caseId, 0, abi.encode(id));
         attest(caseId, 1, T.Value.FALSE, 1); // one attestor only
+        vm.expectRevert(abi.encodeWithSelector(E.ADRF_WindowOpen.selector, "evidence"));
+        reg.resolveEvidenced(caseId, 1, "");
+        assertFalse(reg.getFinding(caseId, 1).resolved);
+        vm.warp(reg.getClock(caseId).evidenceCloseAt + 1);
         reg.resolveEvidenced(caseId, 1, "");
         reg.decide(caseId);
         assertEq(uint8(reg.getRound(caseId, 1).result), uint8(T.SubstantiveResult.NoDecision));

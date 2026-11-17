@@ -1,0 +1,43 @@
+
+added 17 packages in 451ms
+
+> ai-dispute-resolution-framework@0.4.0 check
+> npm run build:examples && npm run vectors && npm run validate
+
+
+> ai-dispute-resolution-framework@0.4.0 build:examples
+> node tools/build-examples.js
+
+wrote examples/policy-service-call.json
+wrote examples/binding-service-escrow.json
+wrote examples/case-duplicate-charge.json
+wrote examples/case-delivery-quality.json
+wrote examples/finding-duplicate-charge.json
+wrote examples/finding-delivery-quality.json
+wrote examples/ruling-duplicate-charge.json
+wrote examples/ruling-delivery-quality.json
+wrote examples/case-version-commitment.json
+wrote examples/finding-version-declared.json
+wrote examples/finding-version-actual.json
+wrote examples/ruling-version-commitment.json
+wrote examples/enactment-refund.json
+wrote examples/manifest.json
+
+> ai-dispute-resolution-framework@0.4.0 vectors
+> node tools/vectors.js
+
+wrote vectors/interface-ids.json
+wrote vectors/identifiers.json
+wrote vectors/policy-id.json
+wrote vectors/keys.json
+
+> ai-dispute-resolution-framework@0.4.0 validate
+> node tools/validate.js
+
+validated 13 example documents against 6 schemas; manifest re-checked; 0 failure(s)
+
+> ai-dispute-resolution-framework@0.4.0 lint:erc
+> node tools/lint-erc.js
+
+eipw spelling findings (review only, not gating): ADRF, Enactability, L0, NoDecision, Reviewable, URIs, acceptor, arbitrable, attestor, bindable, booleans, decidability, delegatecall, durations, enactable, intervener, obligor, permissionless, reportable, runnable, sortition, vendored
+eipw: 0 error(s), 0 other finding(s) for ERCS/erc-8471.md

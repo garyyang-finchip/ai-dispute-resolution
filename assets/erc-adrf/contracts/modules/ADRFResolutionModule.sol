@@ -55,6 +55,11 @@ contract ADRFResolutionModule is ADRFModule {
         }
         (T.Value value, bytes32 resultHash, uint8 kinds) =
             IADRFEvidenceRule(q.method).evaluate(caseId, sq, q.proposition, q.params, bundle);
+        // The evidence window is inclusive, as in submitEvidence. An inconclusive
+        // evaluation is still pending while more evidence may arrive this round.
+        if (value == T.Value.UNDETERMINED && S.now64() <= _s.clocks[caseId].evidenceCloseAt) {
+            revert E.ADRF_WindowOpen("evidence");
+        }
         kinds &= ~T.SUPPORT_JUDGED; // an evidence rule does not form a judgment
         _record(caseId, sq, value, kinds, resultHash, q.method,
             value == T.Value.UNDETERMINED ? T.Reason.METHOD_UNDETERMINED : T.Reason.NONE);
