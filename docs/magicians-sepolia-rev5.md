@@ -1,6 +1,6 @@
 # Sepolia evidence note, revision 5 (reply for the Magicians thread)
 
-*Posted as a reply on topic 30121 after the run of 2026-11-17, following the revision-5 note.*
+*Added to post 15 of topic 30121 (the revision-5 note) after the run of 2026-11-17, in place of that note's closing "Sepolia." paragraph, rather than posted as a separate reply.*
 
 ---
 

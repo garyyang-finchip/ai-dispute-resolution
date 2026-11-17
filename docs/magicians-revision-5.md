@@ -1,6 +1,6 @@
 # Revision 5 note (reply for the Magicians thread)
 
-*Posted as a reply on topic 30121 after the third round of review: Ted's amended-terms tests (post 10, ai-dispute-resolution#1) with the invariant confirmed in posts 11 and 12, Mikhail's report on early resolution (post 13) and Ted's reproduction of it with a proposed fix (ai-dispute-resolution#2). Plain text for the forum; the links are the companion repository and the pull request.*
+*Posted as a reply on topic 30121 after the third round of review: Ted's amended-terms tests (post 10, ai-dispute-resolution#1) with the invariant confirmed in posts 11 and 12, Mikhail's report on early resolution (post 13) and Ted's reproduction of it with a proposed fix (ai-dispute-resolution#2). Plain text for the forum; the links are the companion repository and the pull request. Posted as post 15 on 2026-11-17; after the Sepolia run the post was edited to end with the evidence note (`docs/magicians-sepolia-rev5.md`) in place of its closing "Sepolia." paragraph, so that the thread holds one post on revision 5.*
 
 ---
 
