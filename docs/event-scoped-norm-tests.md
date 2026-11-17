@@ -36,3 +36,9 @@ for application-level amendment authorization; it neither transfers funds nor en
 refunds. ADRF relies on the business source to attest the historical norm honestly:
 the registry cannot reconstruct history that a source overwrites. This contribution
 changes no production contract or normative interface.
+
+Note added with revision 5: the repository's `foundry.toml` now raises the local code size limit for test and script
+contracts, so `forge test` runs under Forge 1.7.1 without the command-line override, and the suite counts 105 tests. The
+procedure-level counterpart of these cases, a source that moves to an amended dispute policy by revoking its binding and
+binding again, is `test/ADRFProcedureInForce.t.sol`; the specification states the invariant in its obligation-source
+requirements and lists these cases under Test Cases.

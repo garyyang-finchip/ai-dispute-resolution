@@ -95,7 +95,7 @@ abstract contract ADRFBase is Test {
         bridge = new ADRFACDFBridge(reg, IACDFRegistryBridge(address(acdf)));
         verifier = new DuplicateSettlementVerifier();
         versionVerifier = new DeclaredVersionVerifier();
-        rule = new AttestorQuorumRule();
+        rule = new AttestorQuorumRule(reg);
         escrow = new ADRFServiceEscrow(reg);
         REFUND = escrow.EFFECT_REFUND();
         STATUS_QUO = escrow.DISPOSITION_STATUS_QUO();

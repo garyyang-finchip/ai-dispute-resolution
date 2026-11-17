@@ -114,6 +114,7 @@ contract ADRFJudgedFlowTest is ADRFBase {
         assertValue(f.value, T.Value.UNDETERMINED);
         assertReason(f.reason, T.Reason.METHOD_UNDETERMINED);
         assertEq(f.source.reason, uint8(A.Reason.QUORUM_NOT_MET));
+        assertLt(f.at, reg.getClock(caseId).evidenceCloseAt, "a judged UNDETERMINED comes from a Final source result: recorded at once");
         // no enactment is recorded on the ERC-8436 side for a NoDecision
         assertEq(uint8(acdf.getEnactment(issueId, address(bridge), bridge.EFFECT_TRUE()).status), uint8(A.EnactmentStatus.NotEnacted));
 

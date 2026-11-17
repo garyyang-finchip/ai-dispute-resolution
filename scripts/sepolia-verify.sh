@@ -2,13 +2,14 @@
 # Verifies the contracts of the Sepolia evidence run on Sourcify from the project's own build.
 #
 #   bash scripts/sepolia-verify.sh [deployments/<record>.json]
-#   (default: the record named by RECORD, sepolia-rev4 unless set; the revision-3 record is deployments/sepolia.json)
+#   (default: the record named by RECORD, sepolia-rev5 unless set; the earlier records are deployments/sepolia.json and sepolia-rev4.json)
 #
 # Submits the standard JSON input of each contract with its constructor arguments (taken from the deployments
-# file), one by one, and prints Sourcify's answer for each. Needs forge and python3; no key, no RPC.
+# file), one by one, and prints Sourcify's answer for each. Needs forge and python3; no key, no RPC. It verifies a record
+# made from the current sources (the revision-5 run): the records of earlier runs were verified with their own sources.
 set -uo pipefail
 cd "$(dirname "$0")/.."
-RECORD="${RECORD:-sepolia-rev4}"
+RECORD="${RECORD:-sepolia-rev5}"
 D="${1:-deployments/$RECORD.json}"
 j() { python3 -c "import json; print(json.load(open('$D'))['$1'])"; }
 POL=$(j policies); REG=$(j registry); ACDF=$(j acdfRegistry)
@@ -37,7 +38,7 @@ verify "$REG" "$C/ADRFDisputeRegistry.sol:ADRFDisputeRegistry" \
     "$(cast abi-encode "constructor(address,address,address,address,address,address,address)" "$POL" "$(j bindingModule)" "$(j filingModule)" "$(j resolutionModule)" "$(j decisionModule)" "$(j recordModule)" "$(j outcomeModule)")"
 verify "$(j verifier)"         "$C/examples/DuplicateSettlementVerifier.sol:DuplicateSettlementVerifier"
 verify "$(j versionVerifier)"  "$C/examples/DeclaredVersionVerifier.sol:DeclaredVersionVerifier"
-verify "$(j rule)"             "$C/examples/AttestorQuorumRule.sol:AttestorQuorumRule"
+verify "$(j rule)"             "$C/examples/AttestorQuorumRule.sol:AttestorQuorumRule" "$(cast abi-encode "constructor(address)" "$REG")"
 verify "$(j bridge)"           "$C/bridges/ADRFACDFBridge.sol:ADRFACDFBridge" "$(cast abi-encode "constructor(address,address)" "$REG" "$ACDF")"
 verify "$(j escrow)"           "$C/examples/ADRFServiceEscrow.sol:ADRFServiceEscrow" "$(cast abi-encode "constructor(address)" "$REG")"
 echo

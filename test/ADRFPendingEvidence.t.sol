@@ -16,6 +16,14 @@ contract ADRFPendingEvidenceTest is ADRFBase {
         p.methods[2].onUndetermined = burden;
         policyId = pol.registerPolicy(p);
         bindingId = escrow.bindTo(bindingInput(policyId, T.AcceptanceMode.PRE_COMMIT));
+        // Revision 5: a PRE_COMMIT binding governs only the events of its own period, so the delivery in dispute
+        // is made under the binding just registered (the fixture's delivery predates it).
+        vm.prank(client);
+        callId = escrow.openCall(provider, 1 ether, TERMS, V2, 30 * DAY);
+        vm.prank(provider);
+        escrow.deliver(callId, V2);
+        vm.prank(provider);
+        escrow.settle(callId);
         return fileAs(client, performanceClaim());
     }
 

@@ -113,11 +113,12 @@ contract ADRFGeneralizationTest is ADRFBase {
         bytes32 caseId = fileAs(client, versionClaim(id));
         reg.resolveFormal(caseId, 0, abi.encode(id));
         attest(caseId, 1, T.Value.FALSE, 1); // one attestor only
+        uint64 close = reg.getClock(caseId).evidenceCloseAt;
         vm.expectRevert(abi.encodeWithSelector(E.ADRF_WindowOpen.selector, "evidence"));
-        reg.resolveEvidenced(caseId, 1, "");
-        assertFalse(reg.getFinding(caseId, 1).resolved);
-        vm.warp(reg.getClock(caseId).evidenceCloseAt + 1);
-        reg.resolveEvidenced(caseId, 1, "");
+        reg.resolveEvidenced(caseId, 1, ""); // no quorum yet: pending, nothing recorded
+        assertFalse(reg.getFinding(caseId, 1).resolved, "nothing recorded");
+        vm.warp(close + 1);
+        reg.resolveEvidenced(caseId, 1, ""); // the window closed without a quorum: UNDETERMINED is final
         reg.decide(caseId);
         assertEq(uint8(reg.getRound(caseId, 1).result), uint8(T.SubstantiveResult.NoDecision));
         vm.warp(block.timestamp + 2 * DAY + 1);

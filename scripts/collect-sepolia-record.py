@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Collects the transaction record of the Sepolia evidence run from the Foundry broadcast files.
 
-    python3 scripts/collect-sepolia-record.py [--chain 11155111] [--out deployments/sepolia-rev4.transactions.json]
+    python3 scripts/collect-sepolia-record.py [--chain 11155111] [--out deployments/sepolia-rev5.transactions.json]
                                               [--since <run-file timestamp>] [--all]
 
 Reads broadcast/SepoliaEvidence.s.sol/<chain>/run-<timestamp>.json in time order (one file per phase, in the
@@ -31,7 +31,7 @@ def hexint(v):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--chain", default="11155111")
-    ap.add_argument("--out", default=os.path.join("deployments", "sepolia-rev4.transactions.json"))
+    ap.add_argument("--out", default=os.path.join("deployments", "sepolia-rev5.transactions.json"))
     ap.add_argument("--since", type=int, default=None, help="keep only the run files whose timestamp (the number in the file name) is at or after this one")
     ap.add_argument("--all", action="store_true", help="keep every run file, however many")
     args = ap.parse_args()

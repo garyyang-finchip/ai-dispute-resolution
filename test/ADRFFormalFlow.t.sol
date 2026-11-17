@@ -141,7 +141,7 @@ contract ADRFFormalFlowTest is ADRFBase {
         escrow.settle(c2);
         MockSource attester = new MockSource(reg);
         T.EventInfo memory i;
-        i.known = true; i.eventAt = uint64(block.timestamp) - 1; i.obligationRef = keccak256("payment");
+        i.known = true; i.eventAt = uint64(block.timestamp); i.obligationRef = keccak256("payment");
         i.normRef = TERMS; i.normDeclaredAt = i.eventAt - 1 days; i.obligationKind = KIND_LIMIT;
         attester.setInfo(i);
         attester.setParty(client, true); attester.setParty(provider, true);

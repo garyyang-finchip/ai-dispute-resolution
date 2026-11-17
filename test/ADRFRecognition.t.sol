@@ -75,7 +75,7 @@ contract ADRFRecognitionTest is ADRFBase {
     function test_recognitionIsTheSourcesStatement() public {
         MockSource m = new MockSource(reg);
         T.EventInfo memory i;
-        i.known = true; i.eventAt = uint64(block.timestamp) - 1 hours; i.obligationRef = keccak256("obligation");
+        i.known = true; i.eventAt = uint64(block.timestamp); i.obligationRef = keccak256("obligation");
         i.normRef = TERMS; i.normDeclaredAt = i.eventAt - 1 days; i.obligationKind = KIND_LIMIT;
         m.setInfo(i);
         m.setParty(client, true); m.setParty(provider, true);

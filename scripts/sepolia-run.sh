@@ -9,11 +9,11 @@
 #
 # Single phases: bash scripts/sepolia-run.sh deploy | formal-file | formal-finalize | judged-file | judged-vote | judged-finalize | judged-close
 # Requires Foundry (forge, cast; rehearsed with 1.5.1 and 1.7.1) and python3. Nothing here needs any key other than PRIVATE_KEY.
-# RECORD names the record files of this run (default sepolia-rev4: the revision-4 run; the revision-3 run of 2026-10-29
-# is deployments/sepolia.json and stays as it is). The record step takes the newest seven run files of the broadcast
-# directory, so an earlier run's files there do not get in the way.
-# --code-size-limit 65536 lifts the EIP-170 limit of Foundry's local EVM for the script contract itself (34 KB of logic,
-# never sent to the chain); Foundry 1.7 applies the limit of foundry.toml (32768, set for the ERC-8436 test fixture) to it.
+# RECORD names the record files of this run (default sepolia-rev5: the revision-5 run; the revision-3 and revision-4
+# runs of 2026-10-29 are deployments/sepolia.json and deployments/sepolia-rev4.json and stay as they are). The record
+# step takes the newest seven run files of the broadcast directory, so an earlier run's files there do not get in the way.
+# The script contract (about 51 KB of logic, run locally and never sent to the chain) relies on the raised local code
+# size limit of foundry.toml, which Foundry 1.7 applies to script contracts too.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -22,8 +22,8 @@ cd "$(dirname "$0")/.."
 export ACDF_REGISTRY="${ACDF_REGISTRY:-0x3bE57E74f2E7c280073b6B16A1Db3F562758dB01}"   # ERC-8436 revision-3 registry on Sepolia
 CAP=16777216
 WAIT="${WAIT_SECONDS:-660}"
-RECORD="${RECORD:-sepolia-rev4}"
-RUN=(forge script script/SepoliaEvidence.s.sol --rpc-url "$SEPOLIA_RPC_URL" --broadcast --skip-simulation --gas-estimate-multiplier 150 --slow --code-size-limit 65536 -vv)
+RECORD="${RECORD:-sepolia-rev5}"
+RUN=(forge script script/SepoliaEvidence.s.sol --rpc-url "$SEPOLIA_RPC_URL" --broadcast --skip-simulation --gas-estimate-multiplier 150 --slow -vv)
 
 say() { printf '\n== %s\n' "$*"; }
 

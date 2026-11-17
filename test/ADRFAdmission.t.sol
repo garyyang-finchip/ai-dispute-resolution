@@ -18,7 +18,7 @@ contract ADRFAdmissionTest is ADRFBase {
         mock = new MockSource(reg);
         T.EventInfo memory i;
         i.known = true;
-        i.eventAt = uint64(block.timestamp) - 1 hours;
+        i.eventAt = uint64(block.timestamp); // the bindings below are registered at this instant: the event is in their period
         i.adoptionDeadline = 0;
         i.obligationRef = keccak256("obligation");
         i.normRef = TERMS;
@@ -104,7 +104,7 @@ contract ADRFAdmissionTest is ADRFBase {
     }
 
     function test_criteria_filingWindow() public {
-        vm.warp(block.timestamp + 7 * DAY); // eventAt was 1 hour before START; window is 7 days
+        vm.warp(block.timestamp + 7 * DAY + 1); // the window is 7 days from the event, which is at the setUp instant
         expectFileRevert(claimant, mockClaim(), abi.encodeWithSelector(E.ADRF_OutsideWindow.selector, "filing"));
     }
 
@@ -163,12 +163,77 @@ contract ADRFAdmissionTest is ADRFBase {
         mock.bind(b);
     }
 
-    function test_binding_revokedOrExpiredStopsNewFilings() public {
+    /// Revocation ends a PRE_COMMIT binding for the events that come after it and takes nothing from the events that
+    /// occurred while it was in force: they can still be filed within their filing window. Revocation is the
+    /// source's alone, and happens once.
+    function test_binding_revocationEndsItForLaterEventsOnly() public {
+        uint64 t0 = uint64(block.timestamp); // the event and the binding's registration
+        vm.warp(t0 + 1 hours);
         mock.revoke();
-        expectFileRevert(claimant, mockClaim(), abi.encodeWithSelector(E.ADRF_BindingInactive.selector, mockBinding));
+        assertEq(reg.getBinding(mockBinding).revokedAt, t0 + 1 hours);
+        vm.warp(t0 + 2 hours);
+        bytes32 id = fileMock(claimant, mockClaim()); // the event preceded the revocation
+        assertState(id, T.ProcedureState.Admitted);
+        T.EventInfo memory i = infoOf();
+        i.eventAt = t0 + 1 hours; // at the instant of the revocation: a revocation in the same block takes nothing
+        i.obligationRef = keccak256("an obligation of the revocation instant");
+        mock.setInfo(i);
+        assertState(fileMock(claimant, mockClaim()), T.ProcedureState.Admitted);
+        i.eventAt = t0 + 90 minutes; // after the revocation
+        i.obligationRef = keccak256("a later obligation");
+        mock.setInfo(i);
+        expectFileRevert(claimant, mockClaim(), abi.encodeWithSelector(E.ADRF_BindingNotInForce.selector, mockBinding, i.eventAt));
         vm.prank(rando);
         vm.expectRevert(abi.encodeWithSelector(E.ADRF_NotSource.selector, mockBinding));
         reg.revokeBinding(mockBinding);
+        vm.expectRevert(abi.encodeWithSelector(E.ADRF_BindingInactive.selector, mockBinding));
+        mock.revoke();
+    }
+
+    /// A PRE_COMMIT binding registered after an event does not reach back to it; a POST_DISPUTE binding may cover it,
+    /// because the respondent accepts the case. `validUntil` ends the period the same way revocation does.
+    function test_binding_doesNotReachBack_andValidUntilEndsItsPeriod() public {
+        T.EventInfo memory i = infoOf(); // the event of the fixture, at the registration instant of mockBinding
+        uint64 t0 = i.eventAt;
+        vm.warp(t0 + 1 hours);
+        MockSource m2 = new MockSource(reg);
+        m2.setInfo(i);
+        m2.setParty(respondent, true);
+        m2.setParty(claimant, true);
+        bytes32 late = m2.bind(bindingInput(policyId, T.AcceptanceMode.PRE_COMMIT));
+        T.ClaimInput memory c = mockClaim();
+        c.object.target = address(m2);
+        vm.prank(claimant);
+        vm.expectRevert(abi.encodeWithSelector(E.ADRF_BindingNotInForce.selector, late, i.eventAt));
+        reg.file(late, c);
+        bytes32 offer = m2.bind(bindingInput(policyId, T.AcceptanceMode.POST_DISPUTE));
+        vm.prank(claimant);
+        bytes32 id = reg.file(offer, c);
+        assertState(id, T.ProcedureState.Filed);
+        vm.prank(respondent);
+        reg.accept(id);
+        assertState(id, T.ProcedureState.Admitted);
+
+        // validUntil: an event before it stays covered after it; an event after it is not covered
+        MockSource m3 = new MockSource(reg);
+        m3.setParty(respondent, true);
+        m3.setParty(claimant, true);
+        T.BindingInput memory b = bindingInput(policyId, T.AcceptanceMode.PRE_COMMIT);
+        b.validUntil = t0 + 2 hours; // registered at t0 + 1 hour, in force for one hour
+        bytes32 bounded = m3.bind(b);
+        i.eventAt = t0 + 90 minutes;
+        i.normDeclaredAt = i.eventAt - 1 days;
+        m3.setInfo(i);
+        vm.warp(t0 + 3 hours); // past validUntil
+        c.object.target = address(m3);
+        vm.prank(claimant);
+        assertState(reg.file(bounded, c), T.ProcedureState.Admitted);
+        i.eventAt = t0 + 150 minutes; // after validUntil
+        i.obligationRef = keccak256("a later obligation");
+        m3.setInfo(i);
+        vm.prank(claimant);
+        vm.expectRevert(abi.encodeWithSelector(E.ADRF_BindingNotInForce.selector, bounded, i.eventAt));
+        reg.file(bounded, c);
     }
 
     function test_binding_scopeKeyRestrictsTheObject() public {
