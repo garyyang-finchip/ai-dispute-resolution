@@ -82,12 +82,15 @@ for c in $CALLS; do
         echo "   settlement $k: (at, state 0 Held / 1 Released / 2 Refunded) = $(call "$ESC" 'settlementOf(uint256,uint32)(uint64,uint8)' "$c" "$k" | tr '\n' ' '); eventRef = $(call "$ESC" 'settlementEventRef(uint32)(bytes32)' "$k")"
     done
 done
-echo "-- balanceOf(provider) = $(call "$ESC" 'balanceOf(address)(uint256)' "$(python3 - "$TX" <<'PY'
+# the provider: named by a revision-5 record; in the earlier records, the second funding transfer of the deploy phase
+# (the revision-5 script tops the actors up only when they hold less than the run needs, so it may send none)
+if has provider; then PROVIDER=$(j provider); else PROVIDER=$(python3 - "$TX" <<'PY'
 import json,sys
 tx=json.load(open(sys.argv[1]))['transactions']
 print([t['to'] for t in tx if t['phase']=='deploy' and t['kind']=='CALL' and t['function'] is None][1])
 PY
-)") wei (released settlements only; nothing is credited at settlement)"
+); fi
+echo "-- balanceOf(provider) = $(call "$ESC" 'balanceOf(address)(uint256)' "$PROVIDER") wei (released settlements only; nothing is credited at settlement)"
 echo
 echo "== balances (ETH)"
 python3 - "$TX" "$D" <<'EOF' | while read -r label addr; do printf '%-10s %s  %s\n' "$label" "$addr" "$(cast balance "$addr" --rpc-url "$SEPOLIA_RPC_URL" --ether)"; done

@@ -1,6 +1,6 @@
 # Sepolia evidence runbook
 
-The run was executed on Sepolia twice on 2026-10-29, exactly as described here (Foundry 1.7.1 on the operator's machine): with the revision-3 contracts (46 transactions, all successful; `docs/sepolia-evidence.md`, `deployments/sepolia.json`) and with the revision-4 contracts (45 transactions, all successful; `docs/sepolia-evidence-rev4.md`, `deployments/sepolia-rev4.json`). The revision-5 run follows the same steps with the extended script below and is recorded as `deployments/sepolia-rev5.json` and `docs/sepolia-evidence-rev5.md`. `RECORD` (default `sepolia-rev5`) names the record files of a run so that an earlier record stays as it is, and the record step takes the newest seven run files of the broadcast directory, so the files of an earlier run may stay there.
+The run was executed on Sepolia three times, exactly as described here (Foundry 1.7.1 on the operator's machine): twice on 2026-10-29, with the revision-3 contracts (46 transactions, all successful; `docs/sepolia-evidence.md`, `deployments/sepolia.json`) and with the revision-4 contracts (45 transactions, all successful; `docs/sepolia-evidence-rev4.md`, `deployments/sepolia-rev4.json`), and on 2026-11-17 with the revision-5 contracts and the extended script below (63 transactions, all successful; `docs/sepolia-evidence-rev5.md`, `deployments/sepolia-rev5.json`). `RECORD` (default `sepolia-rev5`) names the record files of a run so that an earlier record stays as it is, and the record step takes the newest seven run files of the broadcast directory, so the files of an earlier run may stay there.
 
 The evidence run deploys the ADRF kernel (the policy registry, the six modules and the dispute registry), the three methods, the bridge over the live ERC-8436 reference registry on Sepolia, the worked-example escrow bound to a fast-track policy, and walks the two complete flows with real transactions. It is the same script that was rehearsed on Anvil (`docs/test-record.md`): `script/SepoliaEvidence.s.sol`, run phase by phase.
 
@@ -70,7 +70,8 @@ RUN="forge script script/SepoliaEvidence.s.sol --rpc-url $SEPOLIA_RPC_URL --broa
 PHASE=deploy          $RUN   # policy registry, six modules, dispute registry, two verifiers, the evidence rule,
                               # the bridge over ACDF_REGISTRY, the ACDF fast-track policy (reused when registered),
                               # the attestor panel, the escrow, the ADRF policy and its amended version 2, the
-                              # binding; tops up the five actors (about 20 tx)
+                              # binding; tops up the five actors where they hold less than the run needs
+                              # (17 tx when none needs it, 22 when all do)
 PHASE=formal-file     $RUN   # client deposits and opens a call, provider delivers and settles it twice, client
                               # files, the verifier resolves, the round is decided (Provisional)
 # wait 11 minutes (the 10-minute review window)
@@ -92,6 +93,8 @@ PHASE=judged-close    $RUN   # finalizes; the escrow enacts the refund and repor
 The fast-track ADRF policy uses a 1-day filing window, 30-minute acceptance and evidence windows, a 60-minute decision window, one 10-minute review, a 2h10m hard cap and a 10-minute enactment margin (its amended version 2: a 2-day filing window and a 10-minute evidence window, the rest unchanged); the calls carry a 4-hour dispute period so that the clock check passes. The windows are short, so do not let more than about 50 minutes pass between `judged-file` and `judged-finalize` (the ERC-8436 issue's 40-minute hard cap plus the import must land inside the 60-minute decision window).
 
 If a phase stops before its last transaction, do not simply run it again: the state file is written only at the end of a phase, and the earlier transactions of the phase are already on chain. Read `broadcast/SepoliaEvidence.s.sol/11155111/run-latest.json`, find the transaction that failed and why, and continue by hand or from a fresh deployment (a fresh `deploy` phase costs only gas; the earlier contracts stay as they are).
+
+A phase that stops before sending anything has changed nothing and can simply be run again: a revert during the script's local execution, or an RPC endpoint that cannot serve Foundry's fork of the block it has just reported as the latest (`failed to get block number`, which the deploy phase of the revision-5 run met once). The record files a run writes on the operator's machine stay untracked there until they are committed through the repository, and a later `git pull` refuses to overwrite untracked files with the committed ones and leaves the checkout where it was; move them aside before pulling, and check with `git log -1` that the checkout is the intended revision before a run.
 
 ## Record
 
