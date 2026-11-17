@@ -1,0 +1,6 @@
+
+> ai-dispute-resolution-framework@0.4.0 lint:erc
+> node tools/lint-erc.js
+
+eipw spelling findings (review only, not gating): ADRF, Enactability, L0, NoDecision, Reviewable, URIs, acceptor, arbitrable, attestor, bindable, booleans, decidability, delegatecall, durations, enactable, intervener, obligor, permissionless, reportable, runnable, sortition, vendored
+eipw: 0 error(s), 0 other finding(s) for ERCS/erc-8471.md

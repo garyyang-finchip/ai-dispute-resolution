@@ -1,0 +1,121 @@
+Compiling 15 files with Solc 0.8.30
+Solc 0.8.30 finished in 25.91s
+Compiler run successful!
+
+Ran 7 tests for test/ADRFFormalFlow.t.sol:ADRFFormalFlowTest
+[PASS] test_duplicateCharge_endToEnd() (gas: 1468634)
+[PASS] test_enactmentLog_authorityAndEffects() (gas: 1386380)
+[PASS] test_evidenceWindow() (gas: 860877)
+[PASS] test_formal_burdenRuleOnTimeout() (gas: 1005394)
+[PASS] test_formal_inputsMustMatchPinnedHash() (gas: 854721)
+[PASS] test_formal_notSustainedWhenVerifierSaysFalse() (gas: 2299385)
+[PASS] test_leadReportOpensNothing() (gas: 46633)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 2.62ms (1.96ms CPU time)
+
+Ran 9 tests for test/ADRFRecognition.t.sol:ADRFRecognitionTest
+[PASS] test_deliveryClaim_refundsTheHeldCharge() (gas: 1397104)
+[PASS] test_eachSettlementBeyondTheFirst_isItsOwnCase() (gas: 3342695)
+[PASS] test_exclusivity_isOnTheDecisiveProposition_notTheWording() (gas: 1514982)
+[PASS] test_invertedDirection_isRefused() (gas: 98178)
+[PASS] test_lateExecutor_reportsFailed() (gas: 1329968)
+[PASS] test_recognitionIsTheSourcesStatement() (gas: 1825569)
+[PASS] test_settlementsAreHeld_untilTheAttestedDeadline() (gas: 1384454)
+[PASS] test_triviallyTrueDecisiveQuestion_isRefused() (gas: 911307)
+[PASS] test_unrecognisedProposition_andWrongKind_areRefused() (gas: 1155862)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 3.22ms (2.78ms CPU time)
+
+Ran 7 tests for test/ADRFJudgedFlow.t.sol:ADRFJudgedFlowTest
+[PASS] test_bridge_guards() (gas: 2024233)
+[PASS] test_judgment_expiredWhenNeverOpened() (gas: 1184312)
+[PASS] test_judgment_mustFitDecisionWindow() (gas: 71355)
+[PASS] test_quality_approvedByPanel_claimNotSustained() (gas: 2231673)
+[PASS] test_quality_blockedByPanel_claimSustained() (gas: 2453761)
+[PASS] test_quality_finalityByAdoption_isImportedAsSuch() (gas: 2322035)
+[PASS] test_quality_noDecision_keepsItsMeaning() (gas: 2221494)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 3.36ms (3.02ms CPU time)
+
+Ran 4 tests for test/ADRFVectors.t.sol:ADRFVectorsTest
+[PASS] test_identifiers() (gas: 30533)
+[PASS] test_interfaceIds() (gas: 52863)
+[PASS] test_keys() (gas: 42898)
+[PASS] test_policyIdFollowsTheAbiEncoding() (gas: 100880)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 3.34ms (1.43ms CPU time)
+
+Ran 10 tests for test/ADRFReview.t.sol:ADRFReviewTest
+[PASS] test_dependencyTable_gatesResolutionAndPropagatesPremises() (gas: 1402531)
+[PASS] test_dependencyTable_provenanceIsAUnionThatConfersNothing() (gas: 1693283)
+[PASS] test_evidenced_quorumAndAttestorGuards() (gas: 1079944)
+[PASS] test_reviewWindowLapse_adoptsProvisionalDecision_closureReviewLapsed() (gas: 1285388)
+[PASS] test_review_decisionWindowLapses_adoptsEarlierDecision() (gas: 1344179)
+[PASS] test_review_guards() (gas: 1154705)
+[PASS] test_review_hardDeadline_adoptsEarlierDecision_withTimeoutClosure() (gas: 1342622)
+[PASS] test_review_requireFreshDecision_vacatesTheEarlierDecision() (gas: 4236107)
+[PASS] test_review_targetMustReachTheDecisive() (gas: 1228732)
+[PASS] test_review_undeterminedRound_preservesTheEarlierDecision() (gas: 1441463)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 3.33ms (3.00ms CPU time)
+
+Ran 21 tests for test/ADRFAdmission.t.sol:ADRFAdmissionTest
+[PASS] test_advisory_fullProcedureNoDisposal() (gas: 1821408)
+[PASS] test_advisory_stillNeedsIdentifiableElements() (gas: 116688)
+[PASS] test_binding_requiresSourceInterfaceAndDeclaredEffects() (gas: 369834)
+[PASS] test_binding_revokedOrExpiredStopsNewFilings() (gas: 80909)
+[PASS] test_binding_scopeKeyRestrictsTheObject() (gas: 1047851)
+[PASS] test_clock_downgradeToAdvisoryWhenPreAllowed() (gas: 1741490)
+[PASS] test_clock_incompatibleWindowIsRefused() (gas: 127151)
+[PASS] test_criteria_accountableRespondent() (gas: 928236)
+[PASS] test_criteria_decidable() (gas: 521927)
+[PASS] test_criteria_filingWindow() (gas: 101217)
+[PASS] test_criteria_identifiableEvent() (gas: 151173)
+[PASS] test_criteria_normMustBeRecognisedAndPreDeclared() (gas: 293265)
+[PASS] test_effects_mustBeAuthorizedAndSubstantive() (gas: 182757)
+[PASS] test_exclusivity_oneActiveBindingCasePerContestedPoint() (gas: 3898259)
+[PASS] test_postDispute_acceptanceAdmits() (gas: 1818521)
+[PASS] test_postDispute_bindingNeedsAnAcceptanceWindow() (gas: 769952)
+[PASS] test_postDispute_withdrawAndLapse() (gas: 2470787)
+[PASS] test_shape_rules() (gas: 1131787)
+[PASS] test_standing_openChallengeRequiresPolicyStanding() (gas: 60481)
+[PASS] test_standing_openChallengeWhenPolicyAllows() (gas: 2433732)
+[PASS] test_standing_partiesAndBeneficiaries() (gas: 931017)
+Suite result: ok. 21 passed; 0 failed; 0 skipped; finished in 3.60ms (4.49ms CPU time)
+
+Ran 6 tests for test/ADRFGeneralization.t.sol:ADRFGeneralizationTest
+[PASS] test_actualVersion_isAFactEstablishedByEvidence_notAFilingPrerequisite() (gas: 1781719)
+[PASS] test_actualVersion_noQuorum_isNoDecision_notLiability() (gas: 1759040)
+[PASS] test_declaredVersionDiffersFromCommitted_isFormal() (gas: 1573560)
+[PASS] test_plainServiceAccounts_noAgentIdentityRequired() (gas: 1348417)
+[PASS] test_rulingScopeIsTheObject_notTheProvider() (gas: 2851284)
+[PASS] test_versionVerifier_undeterminedBeforeDelivery_andForOtherPropositions() (gas: 171746)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 3.43ms (1.63ms CPU time)
+
+Ran 7 tests for test/ADRFPendingEvidence.t.sol:ADRFPendingEvidenceTest
+[PASS] test_equalEvidenceAndDecisionWindowsStillAllowTimeout() (gas: 2160579)
+[PASS] test_evidenceCloseIsInclusiveAndUndeterminedResolvesAfterIt() (gas: 2341630)
+[PASS] test_pendingCannotFinalizeNoDecisionBeforeQuorum() (gas: 2391358)
+[PASS] test_pendingCannotFinalizeNotSustainedBeforeQuorum() (gas: 2351910)
+[PASS] test_quorumAtExactEvidenceCloseCanStillResolve() (gas: 2064331)
+[PASS] test_reviewUsesItsFreshEvidenceWindowBeforeAdoptingEarlierRound() (gas: 1575282)
+[PASS] test_zeroEvidenceWindowStillClosesAfterAdmissionTimestamp() (gas: 2145686)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 3.45ms (4.17ms CPU time)
+
+Ran 6 tests for test/ADRFModules.t.sol:ADRFModulesTest
+[PASS] test_constructorChecksModules() (gas: 3538944)
+[PASS] test_everyInterfaceFunctionIsServed() (gas: 238407)
+[PASS] test_modulesRefuseDirectCalls() (gas: 96393)
+[PASS] test_noEtherAccepted() (gas: 28295)
+[PASS] test_routedCallsLogUnderTheRegistryAndPassRevertsThrough() (gas: 930612)
+[PASS] test_unknownSelectorReverts() (gas: 17125)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 3.92ms (939.67µs CPU time)
+
+Ran 9 tests for test/ADRFOptimisticAndPolicy.t.sol:ADRFOptimisticAndPolicyTest
+[PASS] test_interfaceIds() (gas: 20498)
+[PASS] test_nonOptimisticCase_hasNoAnswerWindow() (gas: 854767)
+[PASS] test_optimistic_answerContinuesTheOrdinaryProcedure() (gas: 1067317)
+[PASS] test_optimistic_meritsBeforeSilence() (gas: 1037965)
+[PASS] test_optimistic_silenceAdoptsTheSilenceRule() (gas: 1296333)
+[PASS] test_policy_familiesAndVersions() (gas: 891637)
+[PASS] test_policy_idIsTheHashOfTheSpec() (gas: 64750)
+[PASS] test_policy_lookups() (gas: 115066)
+[PASS] test_policy_validation() (gas: 749990)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 3.85ms (2.72ms CPU time)
+
+Ran 10 test suites in 6.11ms (34.12ms CPU time): 86 tests passed, 0 failed, 0 skipped (86 total tests)

@@ -34,6 +34,10 @@ contract ADRFReviewTest is ADRFBase {
         vm.expectRevert(abi.encodeWithSelector(AttestorQuorumRuleErrors.Rule_NotAttestor.selector, rando));
         rule.attest(panelId, caseId, 0, T.Value.FALSE);
         attestAll(caseId, 0, T.Value.FALSE, 1); // one of three: no quorum
+        vm.expectRevert(abi.encodeWithSelector(E.ADRF_WindowOpen.selector, "evidence"));
+        reg.resolveEvidenced(caseId, 0, "");
+        assertFalse(reg.getFinding(caseId, 0).resolved);
+        vm.warp(reg.getClock(caseId).evidenceCloseAt + 1);
         reg.resolveEvidenced(caseId, 0, "");
         T.Finding memory f = reg.getFinding(caseId, 0);
         assertValue(f.value, T.Value.UNDETERMINED);
@@ -77,6 +81,10 @@ contract ADRFReviewTest is ADRFBase {
         // one attestor changes its mind: 1 FALSE vs 1 TRUE, no quorum
         vm.prank(attestors[1]);
         rule.attest(panelId, caseId, 0, T.Value.TRUE);
+        vm.expectRevert(abi.encodeWithSelector(E.ADRF_WindowOpen.selector, "evidence"));
+        reg.resolveEvidenced(caseId, 0, "");
+        assertState(caseId, T.ProcedureState.Admitted);
+        vm.warp(reg.getClock(caseId).evidenceCloseAt + 1);
         reg.resolveEvidenced(caseId, 0, "");
         assertValue(reg.getFinding(caseId, 0).value, T.Value.UNDETERMINED);
         reg.decide(caseId);
