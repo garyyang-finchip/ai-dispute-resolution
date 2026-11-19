@@ -15,7 +15,7 @@ The framework standardizes four objects, two registries and one closed loop, and
 
 The **J-profile** consumes [ERC-8436](https://eips.ethereum.org/ERCS/erc-8436) through its real interface: one `CONSUMER_FILED` issue per judged sub-question, one binary question, a fixed effect pair, and only a Final result is imported, with its issue, policy, source round, round count and adoption flag. The registries never move funds and never execute an effect: executors named by the binding read the ruling, check their own authority, amount, target and anti-duplication record, enact and report (`Enacted` is never overwritten; `Unknown` is not `Failed`).
 
-Economic mechanisms are declared, not designed: the policy document states what every bond or fee arrangement serves, how it flows under every state and result, what it assumes and what happens on failure; receiving a reward proves no fact and forfeiting a bond proves no wrongdoing.
+Economic mechanisms are declared, not designed: the policy document states what every bond or fee arrangement serves, how it flows along each path of the procedure (conditions stated in terms of what the registry records: the round, the role of the party that filed or asked for a review, each round's result, the adopted round, the closure), what it assumes and what happens on failure; receiving a reward proves no fact and forfeiting a bond proves no wrongdoing.
 
 ## Repository
 
