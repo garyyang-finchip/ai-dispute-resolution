@@ -189,7 +189,9 @@ contract ADRFOptimisticAndPolicyTest is ADRFBase {
 
         s = fresh("evidence");
         s.track.evidenceWindow = s.track.decisionWindow + 1;
-        expectInvalid(s, "evidence window exceeds decision window");
+        expectInvalid(s, "evidence window not shorter than decision window");
+        s.track.evidenceWindow = s.track.decisionWindow; // revision 6: equal windows leave no instant to resolve in
+        expectInvalid(s, "evidence window not shorter than decision window");
 
         s = fresh("review window");
         s.track.reviewWindow = 0;

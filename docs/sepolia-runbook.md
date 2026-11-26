@@ -1,6 +1,6 @@
 # Sepolia evidence runbook
 
-The run was executed on Sepolia three times, exactly as described here (Foundry 1.7.1 on the operator's machine): twice on 2026-10-29, with the revision-3 contracts (46 transactions, all successful; `docs/sepolia-evidence.md`, `deployments/sepolia.json`) and with the revision-4 contracts (45 transactions, all successful; `docs/sepolia-evidence-rev4.md`, `deployments/sepolia-rev4.json`), and on 2026-11-17 with the revision-5 contracts and the extended script below (63 transactions, all successful; `docs/sepolia-evidence-rev5.md`, `deployments/sepolia-rev5.json`). `RECORD` (default `sepolia-rev5`) names the record files of a run so that an earlier record stays as it is, and the record step takes the newest seven run files of the broadcast directory, so the files of an earlier run may stay there.
+The run was executed on Sepolia three times, exactly as described here (Foundry 1.7.1 on the operator's machine): twice on 2026-10-29, with the revision-3 contracts (46 transactions, all successful; `docs/sepolia-evidence.md`, `deployments/sepolia.json`) and with the revision-4 contracts (45 transactions, all successful; `docs/sepolia-evidence-rev4.md`, `deployments/sepolia-rev4.json`), and on 2026-11-17 with the revision-5 contracts and the extended script (63 transactions, all successful; `docs/sepolia-evidence-rev5.md`, `deployments/sepolia-rev5.json`). The revision-6 run uses the script as extended once more below, with the expiry read. `RECORD` (default `sepolia-rev6`) names the record files of a run so that an earlier record stays as it is, and the record step takes the newest seven run files of the broadcast directory, so the files of an earlier run may stay there.
 
 The evidence run deploys the ADRF kernel (the policy registry, the six modules and the dispute registry), the three methods, the bridge over the live ERC-8436 reference registry on Sepolia, the worked-example escrow bound to a fast-track policy, and walks the two complete flows with real transactions. It is the same script that was rehearsed on Anvil (`docs/test-record.md`): `script/SepoliaEvidence.s.sol`, run phase by phase.
 
@@ -8,10 +8,10 @@ The evidence run deploys the ADRF kernel (the policy registry, the six modules a
 
 Two properties of Sepolia's current gas schedule decide how the run is executed; both were measured on the earlier runs of this standards family (ERC-8436 on 2026-10-09 and 2026-10-15, ERC-8468 on 2026-10-26 and 2026-10-27):
 
-- A transaction may use at most 16,777,216 gas (EIP-7825); `eth_estimateGas` and `eth_call` enforce the cap as well. Deployment cost grows by roughly 1,570 to 1,800 gas per byte of deployed code (as the revision-3 run measured), so a contract above about 10,500 bytes of runtime code cannot be deployed at all. This is why revision 3 splits the dispute registry into a 2 KB router and six modules; the largest units in revision 5 (`ADRFServiceEscrow` 9,163 bytes, `ADRFFilingModule` 9,033, `ADRFPolicyRegistry` 8,540, `ADRFDecisionModule` 8,535) extrapolate to 13.4 to 14.6 million gas, 80 to 87% of the cap; the pre-flight below reads the live figure before anything is sent.
+- A transaction may use at most 16,777,216 gas (EIP-7825); `eth_estimateGas` and `eth_call` enforce the cap as well. Deployment cost grows by roughly 1,570 to 1,800 gas per byte of deployed code (as the revision-3 run measured), so a contract above about 10,500 bytes of runtime code cannot be deployed at all. This is why revision 3 splits the dispute registry into a 2 KB router and six modules; the largest units in revision 6 (`ADRFDecisionModule` 9,751 bytes, `ADRFServiceEscrow` 9,163, `ADRFFilingModule` 9,033, `ADRFPolicyRegistry` 8,550) extrapolate to 13.4 to 15.3 million gas, 80 to 91% of the cap (the revision-5 run measured the modules at about 1,550 gas per byte plus 0.17 million per creation); the pre-flight below reads the live figure before anything is sent.
 - The schedule prices state and code several times higher than the model of a local Foundry simulation (a plain transfer to an empty account costs 204,600 gas; the earlier runs saw five to seven times the local figure). A transaction sized by the local simulation runs out of gas on chain while the simulation passes. Every broadcast therefore takes its gas limits from the node: `--skip-simulation --gas-estimate-multiplier 150`. Unused gas is refunded, so the margin costs nothing.
 
-Base fees on Sepolia have been between a few wei and about 1.2 gwei in October. The whole run uses on the order of 100 million gas on this schedule: at tens of wei that is well under 0.001 ETH in fees; at 1 gwei it is about 0.1 ETH. The deployer also forwards 0.022 ETH to the derived actors, and the client deposits 0.006 ETH into the escrow (the refunds flow back to it). Fund the deployer with 0.05 ETH when the base fee is in the wei range and with 0.15 ETH when it is around 1 gwei.
+Base fees on Sepolia have been between a few wei and about 1.2 gwei in October. The whole run uses on the order of 100 million gas on this schedule: at tens of wei that is well under 0.001 ETH in fees; at 1 gwei it is about 0.1 ETH. The deployer also tops up the derived actors (at most 0.031 ETH when all five start empty; an earlier run's actors need less), and the client deposits 0.012 ETH into the escrow (the refunds flow back to it). Fund the deployer with 0.05 ETH when the base fee is in the wei range and with 0.15 ETH when it is around 1 gwei.
 
 ## One-command run
 
@@ -22,16 +22,16 @@ export SEPOLIA_RPC_URL=https://...
 export PRIVATE_KEY=0x...
 bash scripts/sepolia-run.sh preflight
 bash scripts/sepolia-run.sh all          # about 40 minutes, most of it waiting
-bash scripts/sepolia-run.sh record       # deployments/sepolia-rev5.json, deployments/sepolia-rev5.transactions.json
+bash scripts/sepolia-run.sh record       # deployments/sepolia-rev6.json, deployments/sepolia-rev6.transactions.json
 ```
 
-`RECORD` names the record (default `sepolia-rev5`); `scripts/sepolia-readback.sh` and `scripts/sepolia-verify.sh` read the same name, so the whole revision-5 sequence is `preflight`, `all` (or the phases one by one), `record`, then `readback` and `verify` with no argument; `RECORD=sepolia-rev4 bash scripts/sepolia-readback.sh` reads the revision-4 record.
+`RECORD` names the record (default `sepolia-rev6`); `scripts/sepolia-readback.sh` and `scripts/sepolia-verify.sh` read the same name, so the whole revision-6 sequence is `preflight`, `all` (or the phases one by one), `record`, then `readback` and `verify` with no argument; `RECORD=sepolia-rev5 bash scripts/sepolia-readback.sh` reads the revision-5 record.
 
 The rest of this document is what the script does, for running it by hand or for reading the result.
 
 ## Inputs
 
-- `PRIVATE_KEY`: the deployer. It tops up the derived actors in the deploy phase to what the run needs (client 0.016 ETH, provider 0.004 ETH, three jurors 0.003 ETH each; nothing for an account an earlier run left above that) and pays the deployment gas. The client, the provider and the three jurors (who are also the attestors of the evidence panel) are derived from it inside the script and need no key of their own.
+- `PRIVATE_KEY`: the deployer. It tops up the derived actors in the deploy phase to what the run needs (client 0.018 ETH, provider 0.004 ETH, three jurors 0.003 ETH each; nothing for an account an earlier run left above that) and pays the deployment gas. The client, the provider and the three jurors (who are also the attestors of the evidence panel) are derived from it inside the script and need no key of their own.
 - `ACDF_REGISTRY`: the live ERC-8436 issue registry whose interfaces match the ones vendored under `assets/erc-adrf/contracts/interfaces/acdf` — the revision-3 deployment of the acd-framework repository, `ACDFRegistry` at `0x3bE57E74f2E7c280073b6B16A1Db3F562758dB01` (its policy registry `0x7eAfCC452EC0A60a358a26B6e73f28413C4abeF0` is read through `policies()`). The script registers a fast-track 2-of-3 roster policy there (15-minute window, one 10-minute appeal, 40-minute hard cap) and the bridge files one issue under it; the policy is content-addressed and the registry refuses a second registration of the same specification, so a later run with the same deployer (and so the same derived jurors) finds it already registered and reuses it — the revision-4 run reuses the policy the revision-3 run registered, `0x328b3d82…`. The revision-2 registry at `0xbA03B451B421b5041d7bE7b5Fd7DbcF3B6Aa1354` predates the body-role rules and is not the one to use.
 - `SEPOLIA_RPC_URL`: the RPC endpoint (`foundry.toml` maps it to the `sepolia` alias).
 
@@ -56,13 +56,13 @@ cast estimate --rpc-url $SEPOLIA_RPC_URL --create $(forge inspect ADRFDecisionMo
 cast estimate --rpc-url $SEPOLIA_RPC_URL --create $(forge inspect ADRFFilingModule bytecode)$ARG
 ```
 
-Each figure must be below 16,777,216; expect 13.4 to 14.6 million (the script's pre-flight estimates the six largest creations, the escrow among them). If the node answers with an error instead of a number, the schedule has moved and the sizes have to be checked again before the run.
+Each figure must be below 16,777,216; expect 13.4 to 15.3 million, the decision module the largest (the script's pre-flight estimates the six largest creations, the escrow among them). If the node answers with an error instead of a number, the schedule has moved and the sizes have to be checked again before the run.
 
 ## Phases
 
 Every phase is one `forge script` invocation. `--skip-simulation` makes Foundry ask the node for the gas of each transaction; `--slow` makes it wait for each receipt before sending the next, which the phases with several senders (client, provider, jurors) require and which puts every transaction in a later block than the one before. The script contract itself (about 51 KB of logic, run locally and never sent to the chain) relies on the local code size limit of `foundry.toml` (262,144 bytes since revision 5), which Foundry 1.7 applies to script contracts too; the revision-3 and revision-4 runs passed `--code-size-limit 65536` for the same purpose. The script deploys every contract from its compiled artifact (`vm.deployCode`) rather than with `new`, so that its own creation code stays small; the artifacts come from the project's own build, and the contracts created on chain are byte for byte the ones `forge build` produced. The state of the run is kept in `deployments/11155111.json` (addresses, identifiers, the case and issue ids, the actors, and the outcomes of the local checks) and read back by every later phase.
 
-What must be refused in the revision-5 scenarios is checked against the deployed contracts by local calls made as the right account and never broadcast: the earlier delivery under the amended binding and the later delivery under the revoked one (`ADRF_BindingNotInForce`), the earlier delivery under the amended terms (`ADRF_NormNotApplicable`), a resolution of either evidenced case on one attestation inside its window by an unrelated account (`ADRF_WindowOpen("evidence")`), an attestation after the quorum (`Rule_QuorumReached`) and one after the later case's window (`Rule_WindowClosed`). A check that does not hold stops the phase before anything is sent; the outcomes are written to the state file, and the read-back re-checks the four that stay checkable after the run by `eth_call` against the chain. The script runs every call of a phase locally at one instant before broadcasting, so around the amendment it steps its local clock by a second to reproduce the order the transactions have on chain.
+What must be refused in the revision-5 and revision-6 scenarios is checked against the deployed contracts by local calls made as the right account and never broadcast: the earlier delivery under the amended binding and the later delivery under the revoked one (`ADRF_BindingNotInForce`), the earlier delivery under the amended terms (`ADRF_NormNotApplicable`), a resolution of either evidenced case on one attestation inside its window by an unrelated account (`ADRF_WindowOpen("evidence")`), an attestation after the quorum (`Rule_QuorumReached`) and one after the later case's window (`Rule_WindowClosed`); since revision 6, the expiry policy with an evidence window equal to its decision window (`ADRF_InvalidPolicy("evidence window not shorter than decision window")`) and an expiry of the quorum case sent with 1,000,000 gas, which cannot forward the rule's allowance (`ADRF_InsufficientGas(1035873)`). A check that does not hold stops the phase before anything is sent; the outcomes are written to the state file, and the read-back re-checks the five that stay checkable after the run by `eth_call` against the chain (the equal-window policy with the calldata the run recorded). The script runs every call of a phase locally at one instant before broadcasting, so around the amendment it steps its local clock by a second to reproduce the order the transactions have on chain.
 
 ```
 RUN="forge script script/SepoliaEvidence.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --skip-simulation --gas-estimate-multiplier 150 --slow -vv"
@@ -80,17 +80,23 @@ PHASE=judged-file     $RUN   # second call; client files the delivery claim; the
                               # amended terms: a third call delivered under the first binding, the escrow revokes it
                               # and binds policy version 2, a fourth call under terms v2; an evidenced claim on each
                               # delivery under the binding in force at it; on the earlier case two attestations (a
-                              # quorum inside the window) and the decision, on the later case one attestation
+                              # quorum inside the window) and the decision, on the later case one attestation;
+                              # the expiry read: the expiry policy registered and bound, two more calls delivered
+                              # under it, an evidenced claim on each that nobody resolves, two attestations on the
+                              # first and one on the second
 PHASE=judged-vote     $RUN   # two jurors block the proposition; the deployer settles round 1 (No)
 # wait 11 minutes (the 10-minute ERC-8436 appeal window)
 PHASE=judged-finalize $RUN   # finalizes the issue, imports the Final result (FALSE), decides (Provisional); the
                               # earlier evidenced case is finalized and the escrow, now under the amended binding,
                               # enacts its refund; the later case's window has closed: UNDETERMINED, NoDecision
 # wait 11 minutes (the 10-minute review window)
-PHASE=judged-close    $RUN   # finalizes; the escrow enacts the refund and reports Enacted; the later case is Final
+PHASE=judged-close    $RUN   # finalizes; the escrow enacts the refund and reports Enacted; the later case is Final;
+                              # both expiry cases, past their decision deadline, are closed by expireDecision: the
+                              # first recorded as the panel's FALSE, Sustained, Final and refunded; the second
+                              # UNDETERMINED with METHOD_UNDETERMINED, NoDecision
 ```
 
-The fast-track ADRF policy uses a 1-day filing window, 30-minute acceptance and evidence windows, a 60-minute decision window, one 10-minute review, a 2h10m hard cap and a 10-minute enactment margin (its amended version 2: a 2-day filing window and a 10-minute evidence window, the rest unchanged); the calls carry a 4-hour dispute period so that the clock check passes. The windows are short, so do not let more than about 50 minutes pass between `judged-file` and `judged-finalize` (the ERC-8436 issue's 40-minute hard cap plus the import must land inside the 60-minute decision window).
+The fast-track ADRF policy uses a 1-day filing window, 30-minute acceptance and evidence windows, a 60-minute decision window, one 10-minute review, a 2h10m hard cap and a 10-minute enactment margin (its amended version 2: a 2-day filing window and a 10-minute evidence window, the rest unchanged); the calls carry a 4-hour dispute period so that the clock check passes. The windows are short, so do not let more than about 50 minutes pass between `judged-file` and `judged-finalize` (the ERC-8436 issue's 40-minute hard cap plus the import must land inside the 60-minute decision window). The expiry policy (revision 6) has the evidenced method alone, a 5-minute evidence window inside a 10-minute decision window, no review and a 40-minute hard cap; `judged-close` must come at least 10 minutes after `judged-file` for its expiries (the runner's two waits give about 23), and nothing is lost if it comes later. Revision 6 adds 17 transactions to a run: 14 in `judged-file`, 3 in `judged-close`.
 
 If a phase stops before its last transaction, do not simply run it again: the state file is written only at the end of a phase, and the earlier transactions of the phase are already on chain. Read `broadcast/SepoliaEvidence.s.sol/11155111/run-latest.json`, find the transaction that failed and why, and continue by hand or from a fresh deployment (a fresh `deploy` phase costs only gas; the earlier contracts stay as they are).
 
@@ -100,10 +106,10 @@ A phase that stops before sending anything has changed nothing and can simply be
 
 After the run, the record consists of:
 
-1. `deployments/11155111.json` copied to `deployments/$RECORD.json` (every address and identifier of the run; `sepolia.json` for the revision-3 run, `sepolia-rev4.json` for the revision-4 run, `sepolia-rev5.json` for the revision-5 run, which also holds the actors and the outcomes of the local checks);
+1. `deployments/11155111.json` copied to `deployments/$RECORD.json` (every address and identifier of the run; `sepolia.json` for the revision-3 run, `sepolia-rev4.json` for the revision-4 run, `sepolia-rev5.json` for the revision-5 run, which also holds the actors and the outcomes of the local checks, `sepolia-rev6.json` for the revision-6 run, which adds the expiry policy, its binding, the two expiry cases and the calldata of the refused equal-window policy);
 2. the transaction list: hash, block, status, gas used and effective gas price of every transaction of every phase, collected from `broadcast/SepoliaEvidence.s.sol/11155111/*.json` by `scripts/collect-sepolia-record.py` into `deployments/$RECORD.transactions.json` (the newest seven run files when the directory also holds an earlier run's; `--since` and `--all` choose otherwise, and the files used are printed);
 3. the verification of the contracts on Sourcify from the standard JSON input (`forge verify-contract --verifier sourcify --chain 11155111 <address> <Contract>`, with `--constructor-args $(cast abi-encode "constructor(address)" <policyRegistry>)` for the six modules, the seven addresses for the dispute registry, the registry for the escrow and the registry and the ERC-8436 registry for the bridge);
-4. the evidence document (`docs/sepolia-evidence.md` for revision 3, `docs/sepolia-evidence-rev4.md` for revision 4, `docs/sepolia-evidence-rev5.md` for revision 5): the phases, the addresses, the policy and binding identifiers, the two case identifiers, the ERC-8436 issue identifier, the rulings and enactment statuses read back from the registry (`scripts/sepolia-readback.sh`, which in revision 4 also prints each settlement's state and the held value of each call), and the gas figures.
+4. the evidence document (`docs/sepolia-evidence.md` for revision 3, `docs/sepolia-evidence-rev4.md` for revision 4, `docs/sepolia-evidence-rev5.md` for revision 5, `docs/sepolia-evidence-rev6.md` for revision 6): the phases, the addresses, the policy and binding identifiers, the two case identifiers, the ERC-8436 issue identifier, the rulings and enactment statuses read back from the registry (`scripts/sepolia-readback.sh`, which in revision 4 also prints each settlement's state and the held value of each call), and the gas figures.
 
 The files under 1 and 2, together with the `broadcast` directory of the run, are enough to write 3 and 4 afterwards.
 
@@ -116,7 +122,7 @@ anvil --code-size-limit 32768 --block-time 1 &
 export PRIVATE_KEY=<anvil key 0>
 RUN="forge script script/SepoliaEvidence.s.sol --rpc-url http://127.0.0.1:8545 --broadcast --skip-simulation --gas-estimate-multiplier 150 --slow --code-size-limit 262144"
 for ph in deploy formal-file; do PHASE=$ph $RUN; done
-cast rpc evm_increaseTime 660 --rpc-url http://127.0.0.1:8545
+cast rpc evm_increaseTime 660 --rpc-url http://127.0.0.1:8545; sleep 2   # the next block carries the new time
 PHASE=formal-finalize $RUN    # then judged-file, judged-vote, warp, judged-finalize, warp, judged-close
 ```
 

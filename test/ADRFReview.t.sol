@@ -122,7 +122,8 @@ contract ADRFReviewTest is ADRFBase {
         assertState(caseId, T.ProcedureState.Final);
         T.RoundRecord memory r2 = reg.getRound(caseId, 2);
         assertEq(uint8(r2.result), uint8(T.SubstantiveResult.NoDecision));
-        assertReason(r2.reason, T.Reason.TIMEOUT);
+        // nobody resolved the review round: expiry read the rule, which had no quorum in round 2
+        assertReason(r2.reason, T.Reason.METHOD_UNDETERMINED);
         T.Ruling memory u = reg.getRuling(caseId);
         assertEq(uint8(u.result), uint8(T.SubstantiveResult.Sustained));
         assertTrue(u.adoptedFromEarlierRound);
@@ -171,7 +172,7 @@ contract ADRFReviewTest is ADRFBase {
         T.Ruling memory u = reg.getRuling(caseId);
         assertEq(uint8(u.state), uint8(T.ProcedureState.Final));
         assertEq(uint8(u.result), uint8(T.SubstantiveResult.NoDecision));
-        assertReason(u.reason, T.Reason.TIMEOUT);
+        assertReason(u.reason, T.Reason.METHOD_UNDETERMINED); // the rule, read at expiry, had no quorum in round 2
         assertEq(u.sourceRound, 2);
         assertFalse(u.adoptedFromEarlierRound);
         assertEq(u.allowedEffect, bytes32(0));

@@ -3,16 +3,18 @@
 #
 #   export SEPOLIA_RPC_URL=https://...
 #   bash scripts/sepolia-readback.sh [deployments/<record>.json] [deployments/<record>.transactions.json]
-#   (default: the record named by RECORD, sepolia-rev5 unless set; the earlier records are deployments/sepolia.json and sepolia-rev4.json)
+#   (default: the record named by RECORD, sepolia-rev6 unless set; the earlier records are deployments/sepolia.json,
+#   sepolia-rev4.json and sepolia-rev5.json)
 #
 # Prints: the block timestamps of the phase boundaries, the cases (header, clock, decisive finding, round 1, ruling,
 # enactment of the refund), the ERC-8436 issue and its result, the escrow's record of the calls, the balances of the
-# six accounts and, for a revision-5 record, the two bindings, the attestation tallies and the refusals re-checked
-# against the chain (eth_call, nothing is sent). Read-only; needs cast and python3; no key.
+# six accounts and, for a revision-5 or revision-6 record, the bindings, the attestation tallies and the refusals
+# re-checked against the chain (eth_call, nothing is sent); a revision-6 record adds the two cases decided at expiry.
+# Read-only; needs cast and python3; no key.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${SEPOLIA_RPC_URL:?set SEPOLIA_RPC_URL}"
-RECORD="${RECORD:-sepolia-rev5}"
+RECORD="${RECORD:-sepolia-rev6}"
 D="${1:-deployments/$RECORD.json}"
 TX="${2:-deployments/$RECORD.transactions.json}"
 j() { python3 -c "import json,sys; print(json.load(open('$D'))['$1'])"; }
@@ -47,6 +49,7 @@ echo "== policy registry $POL: policyExists = $(call "$POL" 'policyExists(bytes3
 echo
 CASES="formal:$CF judged:$CJ"
 if has caseEarlier; then CASES="$CASES earlier:$(j caseEarlier) later:$(j caseLater)"; fi
+if has caseExpiryQuorum; then CASES="$CASES expiry-quorum:$(j caseExpiryQuorum) expiry-single:$(j caseExpirySingle)"; fi
 for pair in $CASES; do
     name=${pair%%:*}; id=${pair#*:}
     echo "== $name case $id"
@@ -75,6 +78,7 @@ echo
 echo "== escrow $ESC"
 CALLS="$(j callFormal) $(j callJudged)"
 if has callEarlier; then CALLS="$CALLS $(j callEarlier) $(j callLater)"; fi
+if has callExpiryQuorum; then CALLS="$CALLS $(j callExpiryQuorum) $(j callExpirySingle)"; fi
 for c in $CALLS; do
     n=$(call "$ESC" 'settlementCount(uint256)(uint32)' "$c")
     echo "-- call $c: settlementCount = $n; heldOf = $(call "$ESC" 'heldOf(uint256)(uint256)' "$c") wei; versionsOf (committed, declared) = $(call "$ESC" 'versionsOf(uint256)(bytes32,bytes32)' "$c" | tr '\n' ' ')"
@@ -112,10 +116,13 @@ if has bindingIdV2; then
     echo "== bindings (source, policyId, scopeKey, mode, openChallenge, hasBeneficiaries, downgradeOnClock, revoked, validUntil, createdAt, termsHash, revokedAt)"
     echo "-- first binding  $B1"; call "$REG" "$BINDING" "$B1"
     echo "-- amended binding $B2"; call "$REG" "$BINDING" "$B2"
+    if has bindingIdExpiry; then echo "-- expiry binding $(j bindingIdExpiry)"; call "$REG" "$BINDING" "$(j bindingIdExpiry)"; fi
     echo "-- escrow.bindingId() = $(call "$ESC" 'bindingId()(bytes32)')"
     echo
     echo "== attestation tallies (yes, no) per case and round"
-    for pair in "earlier:$(j caseEarlier)" "later:$(j caseLater)"; do
+    PAIRS="earlier:$(j caseEarlier) later:$(j caseLater)"
+    if has caseExpiryQuorum; then PAIRS="$PAIRS expiry-quorum:$(j caseExpiryQuorum) expiry-single:$(j caseExpirySingle)"; fi
+    for pair in $PAIRS; do
         echo "-- $pair: $(call "$RULE" 'tallyOf(bytes32,bytes32,uint32,uint32)(uint32,uint32)' "$PANEL" "${pair#*:}" 0 1 | tr '\n' ' ')"
     done
     echo
@@ -124,7 +131,8 @@ if has bindingIdV2; then
         local out sel; out=$(cast call --rpc-url "$SEPOLIA_RPC_URL" "$@" 2>&1 || true)
         sel=$(printf '%s' "$out" | grep -o '0x[0-9a-f]\{8\}' | head -1)
         for e in 'ADRF_BindingNotInForce(bytes32,uint64)' 'ADRF_NormNotApplicable(string)' 'ADRF_WindowOpen(string)' \
-                 'ADRF_AlreadyResolved(uint32)' 'ADRF_Duplicate(bytes32,bytes32)' 'ADRF_WrongState(bytes32,uint8)' 'Rule_WindowClosed(bytes32,uint64)' 'Rule_QuorumReached(bytes32,uint32,uint32)'; do
+                 'ADRF_AlreadyResolved(uint32)' 'ADRF_Duplicate(bytes32,bytes32)' 'ADRF_WrongState(bytes32,uint8)' 'Rule_WindowClosed(bytes32,uint64)' 'Rule_QuorumReached(bytes32,uint32,uint32)' \
+                 'ADRF_InvalidPolicy(string)' 'ADRF_InsufficientGas(uint256)'; do
             [ "$sel" = "$(cast sig "$e")" ] && { echo "refused: ${e%%(*}"; return; }
         done
         echo "not refused as expected: $out"
@@ -145,5 +153,9 @@ if has bindingIdV2; then
     echo "-- later delivery under the revoked binding:     $(name --from "$(j client)" "$REG" "$CLAIM" "$B1" "$(claim "$(j callLater)" "$V2")")"
     echo "-- earlier delivery under the amended terms:     $(name --from "$(j client)" "$REG" "$CLAIM" "$B1" "$(claim "$(j callEarlier)" "$V2")")"
     echo "-- attestation on the later case after its window: $(name --from "$(j juror1)" "$RULE" 'attest(bytes32,bytes32,uint32,uint8)' "$PANEL" "$(j caseLater)" 0 2)"
+    if has equalWindowsCall; then
+        DEPLOYER=$(python3 -c "import json; print(json.load(open('$TX'))['transactions'][0]['from'])")
+        echo "-- policy with an evidence window equal to its decision window (the run's own calldata): $(name --from "$DEPLOYER" "$POL" "$(j equalWindowsCall)")"
+    fi
     echo "-- local checks recorded by the run: $(python3 -c "import json; d=json.load(open('$D')); print('; '.join(k + ': ' + v for k, v in d.items() if k.startswith('check')))")"
 fi

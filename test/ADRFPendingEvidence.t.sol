@@ -128,17 +128,26 @@ contract ADRFPendingEvidenceTest is ADRFBase {
         assertEq(reg.getRuling(id).sourceRound, 1);
     }
 
-    function test_equalEvidenceAndDecisionWindowsStillAllowTimeout() public {
-        bytes32 id = _file(T.OnUndetermined.NO_DECISION, 5 * DAY);
+    function test_evidenceWindowMustCloseBeforeTheDecisionDeadline() public {
+        // Revision 6: equal windows left no instant at which an UNDETERMINED could be resolved, so the policy is
+        // refused; one second shorter, the expiry reads the rule and records what resolution would have.
+        T.PolicySpec memory p = servicePolicy(keccak256("pending evidence"), 1, bytes32(0), false);
+        p.track.maxReviews = 0;
+        p.track.reviewWindow = 0;
+        p.track.reviewTypes = 0;
+        p.track.evidenceWindow = 5 * DAY;
+        vm.expectRevert(abi.encodeWithSelector(E.ADRF_InvalidPolicy.selector, "evidence window not shorter than decision window"));
+        pol.registerPolicy(p);
+        bytes32 id = _file(T.OnUndetermined.NO_DECISION, 5 * DAY - 1);
         T.CaseClock memory k = reg.getClock(id);
-        assertEq(k.evidenceCloseAt, k.decisionDeadline);
-        vm.warp(k.decisionDeadline);
+        assertEq(k.evidenceCloseAt + 1, k.decisionDeadline);
+        vm.warp(k.evidenceCloseAt);
         _assertPending(id);
         vm.warp(k.decisionDeadline + 1);
         vm.expectRevert(abi.encodeWithSelector(E.ADRF_WindowClosed.selector, "decision"));
         reg.resolveEvidenced(id, 0, "");
         reg.expireDecision(id);
-        assertReason(reg.getFinding(id, 0).reason, T.Reason.TIMEOUT);
+        assertReason(reg.getFinding(id, 0).reason, T.Reason.METHOD_UNDETERMINED);
         assertResult(id, T.SubstantiveResult.NoDecision);
     }
 

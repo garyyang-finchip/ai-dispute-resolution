@@ -2,14 +2,15 @@
 # Verifies the contracts of the Sepolia evidence run on Sourcify from the project's own build.
 #
 #   bash scripts/sepolia-verify.sh [deployments/<record>.json]
-#   (default: the record named by RECORD, sepolia-rev5 unless set; the earlier records are deployments/sepolia.json and sepolia-rev4.json)
+#   (default: the record named by RECORD, sepolia-rev6 unless set; the earlier records are deployments/sepolia.json,
+#   sepolia-rev4.json and sepolia-rev5.json)
 #
 # Submits the standard JSON input of each contract with its constructor arguments (taken from the deployments
 # file), one by one, and prints Sourcify's answer for each. Needs forge and python3; no key, no RPC. It verifies a record
-# made from the current sources (the revision-5 run): the records of earlier runs were verified with their own sources.
+# made from the current sources (the revision-6 run): the records of earlier runs were verified with their own sources.
 set -uo pipefail
 cd "$(dirname "$0")/.."
-RECORD="${RECORD:-sepolia-rev5}"
+RECORD="${RECORD:-sepolia-rev6}"
 D="${1:-deployments/$RECORD.json}"
 j() { python3 -c "import json; print(json.load(open('$D'))['$1'])"; }
 POL=$(j policies); REG=$(j registry); ACDF=$(j acdfRegistry)

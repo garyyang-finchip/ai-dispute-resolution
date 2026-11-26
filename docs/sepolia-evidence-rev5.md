@@ -120,7 +120,7 @@ Against revision 4 (45 transactions): the deploy phase is 6.65 million gas more 
 
 ```
 export SEPOLIA_RPC_URL=...
-bash scripts/sepolia-readback.sh        # everything under "The state read back from the chain" (RECORD defaults to sepolia-rev5)
+RECORD=sepolia-rev5 bash scripts/sepolia-readback.sh   # everything under "The state read back from the chain" (the default record was sepolia-rev5 until revision 6)
 cast call 0x01091Fd4b0bEEe3216d20973aF0A79AbAFF6CBcb "getBinding(bytes32)((address,bytes32,bytes32,uint8,bool,bool,bool,bool,uint64,uint64,bytes32,uint64))" 0x9087ba8aa7033b4bcfb3887f2cc4d3c746056e3fc0d5b0afea1e098b631490b7 --rpc-url $SEPOLIA_RPC_URL   # revoked, revokedAt 1794928308 (15:11:48)
 cast call 0xAcB4f7c7842DE670f3e3521dc8E9503059db31Cb "tallyOf(bytes32,bytes32,uint32,uint32)(uint32,uint32)" 0x98be549800d80376d79dd075fe0debaaf7f8511d6a592db178ca44292cdc67ee 0x7222502b196566f627b442ac2723935dd013be6395984142c94a84052eae416b 0 1 --rpc-url $SEPOLIA_RPC_URL   # (0, 1): the later case had one attestation
 cast call 0x5B1d6B799c4BE0Baf2BfEF08D47C57627bFCe2D6 "settlementOf(uint256,uint32)(uint64,uint8)" 3 1 --rpc-url $SEPOLIA_RPC_URL   # call 3: Refunded (2), under the revoked binding's ruling

@@ -41,6 +41,13 @@ import {ACDFRegistry as LocalACDFRegistry} from "acdf/ACDFRegistry.sol";
 /// or after the window) is checked against the deployed contracts by local calls that are never broadcast; a check
 /// that does not hold stops the phase before anything is sent, and the outcomes are written to the state file.
 ///
+/// Since revision 6 the run also carries the expiry read: two evidenced cases under a policy whose decision window
+/// outlasts its evidence window by five minutes, which nobody resolves; on one the panel forms its quorum inside the
+/// window, on the other a single attestation stays below it. After the decision deadline the expiry reads the rule
+/// once for each case and records the panel's answer, and METHOD_UNDETERMINED, where the earlier revisions recorded
+/// TIMEOUT for both. The checks: a policy whose evidence window equals its decision window is refused, and an expiry
+/// sent with too little gas to forward the rule's allowance is refused.
+///
 /// Every contract is deployed from its compiled artifact (`vm.deployCode`), so that this script's own creation
 /// code stays small: a script that embeds the creation code of everything it deploys exceeds the EIP-3860 initcode
 /// limit that recent Foundry versions apply to the local deployment of the script contract itself.
@@ -59,6 +66,9 @@ contract SepoliaEvidence is Script {
         // outcomes of the local checks (never broadcast): the error each refused call returned
         string checkEarlierUnderAmended; string checkLaterUnderRevoked; string checkBorrowedTerms;
         string checkEarlyResolve; string checkAfterQuorum; string checkLaterPending; string checkLateAttestation;
+        // revision 6: the expiry read
+        bytes32 policyIdExpiry; bytes32 bindingIdExpiry; uint256 callExpiryQuorum; bytes32 caseExpiryQuorum; uint256 callExpirySingle; bytes32 caseExpirySingle;
+        bytes equalWindowsCall; string checkEqualWindows; string checkStarvedExpiry;
     }
 
     uint64 constant MIN = 60;
@@ -133,6 +143,15 @@ contract SepoliaEvidence is Script {
         s.checkAfterQuorum = vm.parseJsonString(j, ".checkAfterQuorum");
         s.checkLaterPending = vm.parseJsonString(j, ".checkLaterPending");
         s.checkLateAttestation = vm.parseJsonString(j, ".checkLateAttestation");
+        s.policyIdExpiry = vm.parseJsonBytes32(j, ".policyIdExpiry");
+        s.bindingIdExpiry = vm.parseJsonBytes32(j, ".bindingIdExpiry");
+        s.callExpiryQuorum = vm.parseJsonUint(j, ".callExpiryQuorum");
+        s.caseExpiryQuorum = vm.parseJsonBytes32(j, ".caseExpiryQuorum");
+        s.callExpirySingle = vm.parseJsonUint(j, ".callExpirySingle");
+        s.caseExpirySingle = vm.parseJsonBytes32(j, ".caseExpirySingle");
+        s.equalWindowsCall = vm.parseJsonBytes(j, ".equalWindowsCall");
+        s.checkEqualWindows = vm.parseJsonString(j, ".checkEqualWindows");
+        s.checkStarvedExpiry = vm.parseJsonString(j, ".checkStarvedExpiry");
     }
 
     function save(State memory s) internal {
@@ -178,7 +197,16 @@ contract SepoliaEvidence is Script {
         vm.serializeString(o, "checkEarlyResolve", s.checkEarlyResolve);
         vm.serializeString(o, "checkAfterQuorum", s.checkAfterQuorum);
         vm.serializeString(o, "checkLaterPending", s.checkLaterPending);
-        string memory out = vm.serializeString(o, "checkLateAttestation", s.checkLateAttestation);
+        vm.serializeString(o, "checkLateAttestation", s.checkLateAttestation);
+        vm.serializeBytes32(o, "policyIdExpiry", s.policyIdExpiry);
+        vm.serializeBytes32(o, "bindingIdExpiry", s.bindingIdExpiry);
+        vm.serializeUint(o, "callExpiryQuorum", s.callExpiryQuorum);
+        vm.serializeBytes32(o, "caseExpiryQuorum", s.caseExpiryQuorum);
+        vm.serializeUint(o, "callExpirySingle", s.callExpirySingle);
+        vm.serializeBytes32(o, "caseExpirySingle", s.caseExpirySingle);
+        vm.serializeBytes(o, "equalWindowsCall", s.equalWindowsCall);
+        vm.serializeString(o, "checkEqualWindows", s.checkEqualWindows);
+        string memory out = vm.serializeString(o, "checkStarvedExpiry", s.checkStarvedExpiry);
         vm.writeJson(out, statePath());
     }
 
@@ -297,7 +325,7 @@ contract SepoliaEvidence is Script {
         s.bindingId = escrow.bindTo(bindingInputFor(escrow, s.policyId));
 
         // fund the actors: top up to what the run needs, nothing when an earlier run left enough
-        topUp(client, 0.016 ether);
+        topUp(client, 0.018 ether);
         topUp(provider, 0.004 ether);
         for (uint256 i = 0; i < 3; i++) topUp(jurors[i], 0.003 ether);
         vm.stopBroadcast();
@@ -406,6 +434,7 @@ contract SepoliaEvidence is Script {
         console2.logBytes32(s.issueJudged);
 
         amendedFile(pk, s);
+        expiryFile(pk, s);
         save(s);
     }
 
@@ -458,6 +487,9 @@ contract SepoliaEvidence is Script {
         vm.stopBroadcast();
         T.Ruling memory l = reg.getRuling(s.caseLater);
         console2.log("later case: state (4 = Final), result (3 = NoDecision):", uint8(l.state), uint8(l.result));
+
+        expiryClose(pk, s);
+        save(s);
     }
 
     // ------------------------------------------------------------------ amended terms and pending evidence (revision 5)
@@ -570,6 +602,112 @@ contract SepoliaEvidence is Script {
         console2.log("later case finding value (0 = UNDETERMINED):", uint8(reg.getFinding(s.caseLater, 0).value));
     }
 
+    // ------------------------------------------------------------------ the expiry read (revision 6)
+
+    /// The expiry policy: the evidenced method alone, a 5-minute evidence window inside a 10-minute decision window
+    /// (`evidenceWindow` is a parameter so that the refused equal-window variant can be built), no review, a
+    /// 40-minute hard cap.
+    function expirySpec(State memory s, ADRFServiceEscrow escrow, address deployer, uint64 evidenceWindow)
+        internal view returns (T.PolicySpec memory p)
+    {
+        p.family = keccak256(abi.encode("adrf.evidence.expiry", block.chainid, deployer));
+        p.version = 1;
+        p.updateAuthority = deployer;
+        p.objectKind = keccak256("service-call");
+        p.methods = new T.MethodBinding[](1);
+        p.methods[0] = T.MethodBinding(0, T.QuestionType.EVIDENCED, s.rule, s.panelId, T.OnUndetermined.NO_DECISION);
+        p.effects = new T.Effect[](2);
+        p.effects[0] = T.Effect(escrow.EFFECT_REFUND(), T.EffectCategory.SUBSTANTIVE);
+        p.effects[1] = T.Effect(keccak256("adrf:effect/fee-split"), T.EffectCategory.PROCEDURAL_ECONOMIC);
+        p.track.filingWindow = 1 days;
+        p.track.acceptanceWindow = 30 * MIN;
+        p.track.evidenceWindow = evidenceWindow;
+        p.track.decisionWindow = 10 * MIN;
+        p.track.reviewMode = T.ReviewMode.PRESERVE_UNLESS_OVERTURNED;
+        p.track.maxTotalDuration = 40 * MIN;
+        p.track.enactmentMargin = 10 * MIN;
+        p.standing = T.StandingMode.BENEFICIARIES;
+        p.resultProfile = T.RESULT_PROFILE_V1;
+        p.economicDeclaration = keccak256("adrf evidence run: economic declaration");
+        p.descriptorHash = keccak256("adrf evidence run: expiry policy document");
+    }
+
+    /// Two evidenced cases under the expiry policy, filed on two calls delivered under its binding, which nobody
+    /// will resolve: on the first, two attestations form the quorum inside the evidence window; on the second, a
+    /// single attestation stays below it. The check: the same policy with an evidence window as long as its decision
+    /// window is refused.
+    function expiryFile(uint256 pk, State memory s) internal {
+        ADRFServiceEscrow escrow = ADRFServiceEscrow(payable(s.escrow));
+        IADRFDisputeRegistry reg = IADRFDisputeRegistry(s.registry);
+        AttestorQuorumRule rule = AttestorQuorumRule(s.rule);
+        address deployer = vm.addr(pk);
+        uint256 clientPk = derived(pk, "client");
+        uint256 providerPk = derived(pk, "provider");
+        address provider = vm.addr(providerPk);
+
+        s.equalWindowsCall = abi.encodeCall(ADRFPolicyRegistry.registerPolicy, (expirySpec(s, escrow, deployer, 10 * MIN)));
+        s.checkEqualWindows = refused("policy whose evidence window equals its decision window", deployer, s.policies, s.equalWindowsCall,
+            abi.encodeWithSelector(E.ADRF_InvalidPolicy.selector, "evidence window not shorter than decision window"),
+            "ADRF_InvalidPolicy(evidence window not shorter than decision window)");
+
+        vm.startBroadcast(pk);
+        s.policyIdExpiry = ADRFPolicyRegistry(s.policies).registerPolicy(expirySpec(s, escrow, deployer, 5 * MIN));
+        s.bindingIdExpiry = escrow.bindTo(bindingInputFor(escrow, s.policyIdExpiry));
+        vm.stopBroadcast();
+
+        vm.startBroadcast(clientPk);
+        escrow.deposit{value: 0.002 ether}();
+        s.callExpiryQuorum = escrow.openCall(provider, 0.001 ether, TERMS_V1, keccak256("model v2"), 4 hours);
+        s.callExpirySingle = escrow.openCall(provider, 0.001 ether, TERMS_V1, keccak256("model v2"), 4 hours);
+        vm.stopBroadcast();
+        vm.startBroadcast(providerPk);
+        escrow.deliver(s.callExpiryQuorum, keccak256("model v2"));
+        escrow.settle(s.callExpiryQuorum);
+        escrow.deliver(s.callExpirySingle, keccak256("model v2"));
+        escrow.settle(s.callExpirySingle);
+        vm.stopBroadcast();
+
+        vm.startBroadcast(clientPk);
+        s.caseExpiryQuorum = reg.file(s.bindingIdExpiry, performanceClaim(escrow, s.callExpiryQuorum, TERMS_V1, provider));
+        s.caseExpirySingle = reg.file(s.bindingIdExpiry, performanceClaim(escrow, s.callExpirySingle, TERMS_V1, provider));
+        vm.stopBroadcast();
+
+        vm.startBroadcast(derived(pk, "juror0"));
+        rule.attest(s.panelId, s.caseExpiryQuorum, 0, T.Value.FALSE); // the service was not performed
+        rule.attest(s.panelId, s.caseExpirySingle, 0, T.Value.FALSE);
+        vm.stopBroadcast();
+        vm.startBroadcast(derived(pk, "juror1"));
+        rule.attest(s.panelId, s.caseExpiryQuorum, 0, T.Value.FALSE);
+        vm.stopBroadcast();
+        console2.log("expiry cases filed: a quorum on the first, one attestation on the second; nobody resolves either");
+    }
+
+    /// Both decision deadlines have passed and nobody resolved: the expiry reads the rule once for each case. The
+    /// quorum is recorded as the panel's FALSE, and the case is Sustained, Final (the policy has no review) and
+    /// refunded; the single attestation is recorded UNDETERMINED with METHOD_UNDETERMINED and the case ends
+    /// NoDecision. The check: an expiry sent with too little gas to forward the rule's allowance is refused.
+    function expiryClose(uint256 pk, State memory s) internal {
+        ADRFServiceEscrow escrow = ADRFServiceEscrow(payable(s.escrow));
+        IADRFDisputeRegistry reg = IADRFDisputeRegistry(s.registry);
+        address unrelated = address(uint160(uint256(keccak256("adrf evidence run: an unrelated account"))));
+        s.checkStarvedExpiry = refusedWithGas("expiry of the quorum case sent with 1,000,000 gas", unrelated, s.registry, 1_000_000,
+            abi.encodeCall(IADRFDisputeRegistry.expireDecision, (s.caseExpiryQuorum)),
+            abi.encodeWithSelector(E.ADRF_InsufficientGas.selector, uint256(1_035_873)), "ADRF_InsufficientGas(1035873)");
+        vm.startBroadcast(pk);
+        reg.expireDecision(s.caseExpiryQuorum);
+        reg.expireDecision(s.caseExpirySingle);
+        escrow.enact(s.caseExpiryQuorum, escrow.EFFECT_REFUND());
+        vm.stopBroadcast();
+        T.Finding memory q = reg.getFinding(s.caseExpiryQuorum, 0);
+        T.Finding memory u = reg.getFinding(s.caseExpirySingle, 0);
+        console2.log("quorum case finding: value (2 = FALSE), reason (0 = NONE):", uint8(q.value), uint8(q.reason));
+        console2.log("single case finding: value (0 = UNDETERMINED), reason (6 = METHOD_UNDETERMINED):", uint8(u.value), uint8(u.reason));
+        console2.log("quorum case: result (1 = Sustained), refund (2 = Enacted):", uint8(reg.getRuling(s.caseExpiryQuorum).result),
+            uint8(reg.getEnactment(s.caseExpiryQuorum, escrow.EFFECT_REFUND()).status));
+        console2.log("single case: state (4 = Final), result (3 = NoDecision):", uint8(reg.getRuling(s.caseExpirySingle).state),
+            uint8(reg.getRuling(s.caseExpirySingle).result));
+    }
+
     // ------------------------------------------------------------------ helpers
 
     function bindingInputFor(ADRFServiceEscrow escrow, bytes32 policyId) internal view returns (T.BindingInput memory b) {
@@ -639,6 +777,17 @@ contract SepoliaEvidence is Script {
         vm.prank(who);
         (bool ok, bytes memory ret) = target.call(data);
         require(!ok && ret.length >= 4 && bytes4(ret) == expected, string.concat("check failed: ", label));
+        outcome = string.concat("refused: ", name);
+        console2.log(string.concat(label, " -> ", outcome));
+    }
+
+    /// The same check with a gas limit on the call, against the complete revert data.
+    function refusedWithGas(string memory label, address who, address target, uint256 gasLimit, bytes memory data, bytes memory expected, string memory name)
+        internal returns (string memory outcome)
+    {
+        vm.prank(who);
+        (bool ok, bytes memory ret) = target.call{gas: gasLimit}(data);
+        require(!ok && keccak256(ret) == keccak256(expected), string.concat("check failed: ", label));
         outcome = string.concat("refused: ", name);
         console2.log(string.concat(label, " -> ", outcome));
     }

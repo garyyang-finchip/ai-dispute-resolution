@@ -94,7 +94,7 @@ Read on 2026-10-29 after the run (head block 12017973) with `scripts/sepolia-rea
 
 ```
 export SEPOLIA_RPC_URL=...
-bash scripts/sepolia-readback.sh                       # everything under "The state read back from the chain"
+RECORD=sepolia bash scripts/sepolia-readback.sh        # everything under "The state read back from the chain" (the revision-3 record)
 cast call 0x4e27C4728B22c3306f2378b8B421774dc35fE0a9 "supportsInterface(bytes4)(bool)" 0xedc59c17 --rpc-url $SEPOLIA_RPC_URL
 cast call 0x4e27C4728B22c3306f2378b8B421774dc35fE0a9 "moduleOf(bytes4)(address)" 0x$(cast sig "file(bytes32,((uint256,address,uint256,bytes32),bytes32,bytes32,bytes32,bytes32,uint8,address,bytes32,bytes32[],bytes32,bytes32,bytes32,bytes32,bytes32,uint32,uint8,(bytes32,uint8,uint8,bytes32,uint32[],uint8[])[]))" | cut -c3-) --rpc-url $SEPOLIA_RPC_URL
 cast call 0xD85e5E73D385e6575342bd86263F34b17b287128 "refunded(bytes32)(bool)" 0x1bc24c2ea078c1819f1b0914aadcb54570f8d87de3f28041e947f0c4590b88ee --rpc-url $SEPOLIA_RPC_URL

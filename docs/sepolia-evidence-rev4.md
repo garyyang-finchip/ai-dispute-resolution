@@ -101,7 +101,7 @@ Against revision 3: the deploy phase is 0.91 million gas more — the escrow 3.1
 
 ```
 export SEPOLIA_RPC_URL=...
-bash scripts/sepolia-readback.sh                       # everything under "The state read back from the chain" (RECORD defaults to sepolia-rev4)
+RECORD=sepolia-rev4 bash scripts/sepolia-readback.sh   # everything under "The state read back from the chain" (the default record was sepolia-rev4 until revision 5)
 cast call 0x48aBDc76a736546CB3C3B122C9964BC294aE2508 "supportsInterface(bytes4)(bool)" 0xedc59c17 --rpc-url $SEPOLIA_RPC_URL
 cast call 0x698E06aE8C3bc0aa1E2ec12D9A378341b71776B1 "supportsInterface(bytes4)(bool)" 0xa52f2870 --rpc-url $SEPOLIA_RPC_URL   # the revised source interface
 cast call 0x698E06aE8C3bc0aa1E2ec12D9A378341b71776B1 "settlementOf(uint256,uint32)(uint64,uint8)" 1 1 --rpc-url $SEPOLIA_RPC_URL  # settlement 1 of call 1: Held (0)
